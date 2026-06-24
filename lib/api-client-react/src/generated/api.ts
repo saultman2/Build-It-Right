@@ -26,6 +26,7 @@ import type {
   Client,
   ClientHistory,
   ClientInput,
+  ClientListItem,
   ClientUpdate,
   Company,
   CompanyUpdate,
@@ -403,9 +404,9 @@ export const getListClientsUrl = (params?: ListClientsParams,) => {
 /**
  * @summary List customers
  */
-export const listClients = async (params?: ListClientsParams, options?: RequestInit): Promise<Client[]> => {
+export const listClients = async (params?: ListClientsParams, options?: RequestInit): Promise<ClientListItem[]> => {
 
-  return customFetch<Client[]>(getListClientsUrl(params),
+  return customFetch<ClientListItem[]>(getListClientsUrl(params),
   {
     ...options,
     method: 'GET'

@@ -12,6 +12,7 @@ export * from './calendarEventUpdate';
 export * from './client';
 export * from './clientHistory';
 export * from './clientInput';
+export * from './clientListItem';
 export * from './clientUpdate';
 export * from './company';
 export * from './companyUpdate';

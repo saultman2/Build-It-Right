@@ -168,10 +168,13 @@ export interface Client {
   /** @nullable */
   notes?: string | null;
   createdAt: string;
+}
+
+export type ClientListItem = Client & ({
   jobCount: number;
   /** @nullable */
   latestJobStatus?: string | null;
-}
+});
 
 export interface ClientInput {
   name: string;
