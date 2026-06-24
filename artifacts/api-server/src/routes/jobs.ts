@@ -1,27 +1,29 @@
 import { Router, type IRouter } from "express";
-import { eq, and, sql } from "drizzle-orm";
-import { db, jobsTable, clientsTable, estimatesTable, jobPhotosTable, receiptsTable } from "@workspace/db";
+import { eq, and, ilike, or, desc, count, sum } from "drizzle-orm";
+import {
+  db,
+  jobsTable,
+  clientsTable,
+  jobPhotosTable,
+  receiptsTable,
+  estimatesTable,
+  materialListsTable,
+} from "@workspace/db";
 import {
   ListJobsQueryParams,
-  GetJobParams,
   CreateJobBody,
+  GetJobParams,
   UpdateJobParams,
   UpdateJobBody,
   DeleteJobParams,
   GetJobSummaryParams,
 } from "@workspace/api-zod";
+import { requireAuth } from "../lib/auth";
+import { serializeJob, n, toNumStr } from "../lib/serialize";
 
 const router: IRouter = Router();
 
-function formatJob(j: typeof jobsTable.$inferSelect, clientName?: string | null) {
-  return {
-    ...j,
-    clientName: clientName ?? null,
-    estimatedValue: j.estimatedValue ? parseFloat(j.estimatedValue) : null,
-    actualCost: j.actualCost ? parseFloat(j.actualCost) : null,
-    createdAt: j.createdAt.toISOString(),
-  };
-}
+router.use(requireAuth);
 
 router.get("/jobs", async (req, res): Promise<void> => {
   const query = ListJobsQueryParams.safeParse(req.query);
@@ -29,22 +31,28 @@ router.get("/jobs", async (req, res): Promise<void> => {
     res.status(400).json({ error: query.error.message });
     return;
   }
+  const conds = [eq(jobsTable.companyId, req.companyId!)];
+  if (query.data.status) conds.push(eq(jobsTable.status, query.data.status));
+  if (query.data.clientId)
+    conds.push(eq(jobsTable.clientId, query.data.clientId));
+  if (query.data.search) {
+    const s = `%${query.data.search}%`;
+    const orCond = or(
+      ilike(jobsTable.title, s),
+      ilike(jobsTable.address, s),
+      ilike(jobsTable.city, s),
+    );
+    if (orCond) conds.push(orCond);
+  }
 
-  const conditions = [];
-  if (query.data.status) conditions.push(eq(jobsTable.status, query.data.status));
-  if (query.data.clientId) conditions.push(eq(jobsTable.clientId, Number(query.data.clientId)));
-
-  const jobs = await db
-    .select({
-      job: jobsTable,
-      clientName: clientsTable.name,
-    })
+  const rows = await db
+    .select({ job: jobsTable, clientName: clientsTable.name })
     .from(jobsTable)
     .leftJoin(clientsTable, eq(jobsTable.clientId, clientsTable.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(jobsTable.createdAt);
+    .where(and(...conds))
+    .orderBy(desc(jobsTable.createdAt));
 
-  res.json(jobs.map(({ job, clientName }) => formatJob(job, clientName)));
+  res.json(rows.map((r) => serializeJob(r.job, r.clientName)));
 });
 
 router.post("/jobs", async (req, res): Promise<void> => {
@@ -53,9 +61,27 @@ router.post("/jobs", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [job] = await db.insert(jobsTable).values(parsed.data).returning();
-  res.status(201).json(formatJob(job));
+  const d = parsed.data;
+  const [job] = await db
+    .insert(jobsTable)
+    .values({
+      ...d,
+      companyId: req.companyId!,
+      estimatedValue: toNumStr(d.estimatedValue),
+      actualCost: toNumStr(d.actualCost),
+    })
+    .returning();
+  res.status(201).json(serializeJob(job));
 });
+
+async function loadJob(companyId: number, id: number) {
+  const [row] = await db
+    .select({ job: jobsTable, clientName: clientsTable.name })
+    .from(jobsTable)
+    .leftJoin(clientsTable, eq(jobsTable.clientId, clientsTable.id))
+    .where(and(eq(jobsTable.id, id), eq(jobsTable.companyId, companyId)));
+  return row;
+}
 
 router.get("/jobs/:id", async (req, res): Promise<void> => {
   const params = GetJobParams.safeParse(req.params);
@@ -63,16 +89,12 @@ router.get("/jobs/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db
-    .select({ job: jobsTable, clientName: clientsTable.name })
-    .from(jobsTable)
-    .leftJoin(clientsTable, eq(jobsTable.clientId, clientsTable.id))
-    .where(eq(jobsTable.id, params.data.id));
+  const row = await loadJob(req.companyId!, params.data.id);
   if (!row) {
     res.status(404).json({ error: "Job not found" });
     return;
   }
-  res.json(formatJob(row.job, row.clientName));
+  res.json(serializeJob(row.job, row.clientName));
 });
 
 router.patch("/jobs/:id", async (req, res): Promise<void> => {
@@ -86,16 +108,27 @@ router.patch("/jobs/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [job] = await db
+  const d = parsed.data;
+  const [updated] = await db
     .update(jobsTable)
-    .set(parsed.data)
-    .where(eq(jobsTable.id, params.data.id))
+    .set({
+      ...d,
+      estimatedValue: toNumStr(d.estimatedValue),
+      actualCost: toNumStr(d.actualCost),
+    })
+    .where(
+      and(
+        eq(jobsTable.id, params.data.id),
+        eq(jobsTable.companyId, req.companyId!),
+      ),
+    )
     .returning();
-  if (!job) {
+  if (!updated) {
     res.status(404).json({ error: "Job not found" });
     return;
   }
-  res.json(formatJob(job));
+  const row = await loadJob(req.companyId!, params.data.id);
+  res.json(serializeJob(row!.job, row!.clientName));
 });
 
 router.delete("/jobs/:id", async (req, res): Promise<void> => {
@@ -104,7 +137,15 @@ router.delete("/jobs/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [job] = await db.delete(jobsTable).where(eq(jobsTable.id, params.data.id)).returning();
+  const [job] = await db
+    .delete(jobsTable)
+    .where(
+      and(
+        eq(jobsTable.id, params.data.id),
+        eq(jobsTable.companyId, req.companyId!),
+      ),
+    )
+    .returning();
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -118,27 +159,37 @@ router.get("/jobs/:id/summary", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const row = await loadJob(req.companyId!, params.data.id);
+  if (!row) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
   const jobId = params.data.id;
-
-  const [estimates, photos, receipts] = await Promise.all([
-    db.select().from(estimatesTable).where(eq(estimatesTable.jobId, jobId)),
-    db.select().from(jobPhotosTable).where(eq(jobPhotosTable.jobId, jobId)),
-    db.select().from(receiptsTable).where(eq(receiptsTable.jobId, jobId)),
+  const [[photos], [receipts], [estimates], [matList]] = await Promise.all([
+    db
+      .select({ c: count() })
+      .from(jobPhotosTable)
+      .where(eq(jobPhotosTable.jobId, jobId)),
+    db
+      .select({ total: sum(receiptsTable.amount) })
+      .from(receiptsTable)
+      .where(eq(receiptsTable.jobId, jobId)),
+    db
+      .select({ c: count() })
+      .from(estimatesTable)
+      .where(eq(estimatesTable.jobId, jobId)),
+    db
+      .select({ c: count() })
+      .from(materialListsTable)
+      .where(eq(materialListsTable.jobId, jobId)),
   ]);
 
-  const estimateTotal = estimates.reduce((s, e) => s + parseFloat(e.total ?? "0"), 0);
-  const acceptedEstimateTotal = estimates.filter(e => e.status === "accepted").reduce((s, e) => s + parseFloat(e.total ?? "0"), 0);
-  const receiptTotal = receipts.reduce((s, r) => s + parseFloat(r.amount ?? "0"), 0);
-
   res.json({
-    jobId,
-    estimateTotal,
-    receiptTotal,
-    photoCount: photos.length,
-    beforePhotoCount: photos.filter(p => p.type === "before").length,
-    afterPhotoCount: photos.filter(p => p.type === "after").length,
-    estimateCount: estimates.length,
-    acceptedEstimateTotal,
+    job: serializeJob(row.job, row.clientName),
+    photoCount: photos.c,
+    receiptTotal: n(receipts.total),
+    estimateCount: estimates.c,
+    hasMaterialList: matList.c > 0,
   });
 });
 

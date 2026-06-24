@@ -5,7 +5,6 @@
  * BuildPro Construction Business Manager API
  * OpenAPI spec version: 0.1.0
  */
-import type { JobStatus } from './jobStatus';
 
 export interface Job {
   id: number;
@@ -14,7 +13,10 @@ export interface Job {
   clientId?: number | null;
   /** @nullable */
   clientName?: string | null;
-  status: JobStatus;
+  status: string;
+  /** @nullable */
+  jobType?: string | null;
+  priority: string;
   /** @nullable */
   description?: string | null;
   /** @nullable */

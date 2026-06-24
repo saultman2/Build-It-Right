@@ -5,14 +5,12 @@
  * BuildPro Construction Business Manager API
  * OpenAPI spec version: 0.1.0
  */
+import type { Job } from './job';
 
 export interface JobSummary {
-  jobId: number;
-  estimateTotal: number;
-  receiptTotal: number;
+  job: Job;
   photoCount: number;
-  beforePhotoCount: number;
-  afterPhotoCount: number;
+  receiptTotal: number;
   estimateCount: number;
-  acceptedEstimateTotal: number;
+  hasMaterialList: boolean;
 }

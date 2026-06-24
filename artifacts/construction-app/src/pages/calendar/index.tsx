@@ -1,30 +1,48 @@
-import React from "react";
-import { useListEvents } from "@workspace/api-client-react";
+import React, { useState } from "react";
+import { useListEvents, useCreateEvent, getListEventsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameMonth, isSameDay, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 const typeColors = {
-  estimate_visit: "bg-blue-100 border-blue-200 text-blue-800",
-  job_start: "bg-green-100 border-green-200 text-green-800",
-  job_work: "bg-teal-100 border-teal-200 text-teal-800",
-  job_end: "bg-emerald-100 border-emerald-200 text-emerald-800",
-  follow_up: "bg-orange-100 border-orange-200 text-orange-800",
-  meeting: "bg-purple-100 border-purple-200 text-purple-800",
-  other: "bg-slate-100 border-slate-200 text-slate-800"
+  estimate_visit: "bg-blue-100 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300",
+  job_start: "bg-green-100 border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-800 dark:text-green-300",
+  job_work: "bg-teal-100 border-teal-200 text-teal-800 dark:bg-teal-900/30 dark:border-teal-800 dark:text-teal-300",
+  job_end: "bg-emerald-100 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-300",
+  follow_up: "bg-orange-100 border-orange-200 text-orange-800 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-300",
+  meeting: "bg-purple-100 border-purple-200 text-purple-800 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-300",
+  other: "bg-slate-100 border-slate-200 text-slate-800 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
 };
 
 export default function CalendarPage() {
-  const [currentDate, setCurrentDate] = React.useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   
-  // Use a wide date range to ensure we capture events for the view
   const startDate = startOfWeek(startOfMonth(currentDate)).toISOString();
   const endDate = endOfWeek(endOfMonth(currentDate)).toISOString();
   
   const { data: events, isLoading } = useListEvents({
-    startDate,
-    endDate
+    // Only pass job ID if filtering by job, otherwise get all
+  });
+  
+  const createEvent = useCreateEvent();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const [formData, setFormData] = useState({
+    title: "",
+    type: "other",
+    startDatetime: new Date().toISOString().slice(0, 16),
+    allDay: false,
+    notes: "",
   });
 
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
@@ -36,44 +54,121 @@ export default function CalendarPage() {
     end: endOfWeek(endOfMonth(currentDate))
   });
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createEvent.mutate({ 
+      data: {
+        ...formData,
+        startDatetime: new Date(formData.startDatetime).toISOString(),
+      } 
+    }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListEventsQueryKey() });
+        toast({ title: "Event created successfully" });
+        setIsCreateOpen(false);
+        setFormData({ title: "", type: "other", startDatetime: new Date().toISOString().slice(0, 16), allDay: false, notes: "" });
+      },
+      onError: () => {
+        toast({ title: "Error creating event", variant: "destructive" });
+      }
+    });
+  };
+
   return (
-    <div className="space-y-6 h-[calc(100vh-6rem)] flex flex-col">
+    <div className="space-y-6 flex flex-col p-6 md:p-8 max-w-7xl mx-auto h-[calc(100vh-4rem)]">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Schedule</h1>
-          <p className="text-slate-500 mt-1">Manage jobs and appointments</p>
+          <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
+          <p className="text-muted-foreground mt-1">Manage jobs and appointments</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center rounded-md border border-slate-200 bg-white">
-            <Button variant="ghost" size="icon" onClick={prevMonth} className="rounded-none border-r"><ChevronLeft className="h-4 w-4" /></Button>
-            <Button variant="ghost" onClick={today} className="rounded-none font-medium px-4">Today</Button>
-            <Button variant="ghost" size="icon" onClick={nextMonth} className="rounded-none border-l"><ChevronRight className="h-4 w-4" /></Button>
+        
+        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex items-center rounded-md border bg-background shadow-sm">
+            <Button variant="ghost" size="icon" onClick={prevMonth} className="rounded-none border-r h-9 w-9"><ChevronLeft className="h-4 w-4" /></Button>
+            <Button variant="ghost" onClick={today} className="rounded-none font-medium px-4 h-9">Today</Button>
+            <Button variant="ghost" size="icon" onClick={nextMonth} className="rounded-none border-l h-9 w-9"><ChevronRight className="h-4 w-4" /></Button>
           </div>
-          <Button><Plus className="mr-2 h-4 w-4" /> New Event</Button>
+          
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> New Event
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Calendar Event</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Event Title</Label>
+                  <Input id="title" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Type</Label>
+                    <Select value={formData.type} onValueChange={(v) => setFormData({...formData, type: v})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="estimate_visit">Estimate Visit</SelectItem>
+                        <SelectItem value="job_start">Job Start</SelectItem>
+                        <SelectItem value="job_work">Job Work</SelectItem>
+                        <SelectItem value="meeting">Meeting</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="startDatetime">Date & Time</Label>
+                    <Input 
+                      id="startDatetime" 
+                      type={formData.allDay ? "date" : "datetime-local"} 
+                      value={formData.startDatetime} 
+                      onChange={(e) => setFormData({...formData, startDatetime: e.target.value})} 
+                      required 
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="allDay" 
+                    checked={formData.allDay} 
+                    onCheckedChange={(c) => setFormData({...formData, allDay: !!c})} 
+                  />
+                  <Label htmlFor="allDay">All-day event</Label>
+                </div>
+                <div className="pt-4 flex justify-end">
+                  <Button type="submit" disabled={createEvent.isPending}>
+                    {createEvent.isPending ? "Saving..." : "Save Event"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
-      <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <CardHeader className="py-4 border-b shrink-0 flex flex-row items-center justify-between">
+      <Card className="flex-1 flex flex-col min-h-0 overflow-hidden shadow-sm border-border">
+        <CardHeader className="py-4 border-b shrink-0 flex flex-row items-center justify-between bg-muted/20">
           <CardTitle className="text-xl font-bold">
             {format(currentDate, "MMMM yyyy")}
           </CardTitle>
-          <div className="flex gap-2">
-            <div className="flex items-center text-xs"><div className="w-3 h-3 rounded-full bg-blue-500 mr-1.5"></div> Estimate</div>
-            <div className="flex items-center text-xs"><div className="w-3 h-3 rounded-full bg-green-500 mr-1.5"></div> Job</div>
-            <div className="flex items-center text-xs"><div className="w-3 h-3 rounded-full bg-orange-500 mr-1.5"></div> Follow-up</div>
+          <div className="hidden md:flex gap-3">
+            <div className="flex items-center text-xs text-muted-foreground"><div className="w-2.5 h-2.5 rounded-full bg-blue-500 mr-1.5"></div> Estimate</div>
+            <div className="flex items-center text-xs text-muted-foreground"><div className="w-2.5 h-2.5 rounded-full bg-green-500 mr-1.5"></div> Job</div>
+            <div className="flex items-center text-xs text-muted-foreground"><div className="w-2.5 h-2.5 rounded-full bg-orange-500 mr-1.5"></div> Follow-up</div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 flex-1 overflow-auto">
-          <div className="grid grid-cols-7 border-b shrink-0 bg-slate-50">
+        <CardContent className="p-0 flex-1 overflow-auto bg-background">
+          <div className="grid grid-cols-7 border-b shrink-0 bg-muted/30">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="py-2 text-center text-sm font-medium text-slate-500 border-r last:border-r-0">
+              <div key={day} className="py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider border-r last:border-r-0">
                 {day}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 auto-rows-fr h-full">
-            {daysInMonth.map((day, idx) => {
+          <div className="grid grid-cols-7 auto-rows-fr h-full min-h-[500px]">
+            {daysInMonth.map((day) => {
               const dayEvents = events?.filter(e => isSameDay(parseISO(e.startDatetime), day)) || [];
               const isCurrentMonth = isSameMonth(day, currentDate);
               const isToday = isSameDay(day, new Date());
@@ -81,24 +176,25 @@ export default function CalendarPage() {
               return (
                 <div 
                   key={day.toISOString()} 
-                  className={`min-h-[120px] p-2 border-r border-b ${!isCurrentMonth ? 'bg-slate-50/50' : ''} ${isToday ? 'bg-blue-50/20' : ''}`}
+                  className={`min-h-[100px] p-1.5 border-r border-b ${!isCurrentMonth ? 'bg-muted/10 opacity-60' : ''} ${isToday ? 'bg-primary/5' : ''}`}
                 >
-                  <div className="flex justify-between items-center mb-1">
+                  <div className="flex justify-between items-center mb-1.5 px-1">
                     <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${
                       isToday ? 'bg-primary text-primary-foreground' : 
-                      !isCurrentMonth ? 'text-slate-400' : 'text-slate-700'
+                      !isCurrentMonth ? 'text-muted-foreground' : 'text-foreground'
                     }`}>
                       {format(day, 'd')}
                     </span>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5 overflow-y-auto max-h-[calc(100%-2rem)] hide-scrollbar">
                     {dayEvents.map(event => (
                       <div 
                         key={event.id}
-                        className={`text-xs px-2 py-1 rounded truncate border ${typeColors[event.type as keyof typeof typeColors] || typeColors.other} cursor-pointer hover:brightness-95`}
+                        className={`text-xs px-1.5 py-1 rounded truncate border ${typeColors[event.type as keyof typeof typeColors] || typeColors.other} cursor-pointer hover:opacity-80 transition-opacity`}
                         title={`${event.title} - ${event.jobTitle || event.clientName || ''}`}
                       >
-                        <span className="font-semibold">{format(parseISO(event.startDatetime), 'h:mma')}</span> {event.title}
+                        {!event.allDay && <span className="font-semibold opacity-70 mr-1">{format(parseISO(event.startDatetime), 'h:mm')}</span>}
+                        {event.title}
                       </div>
                     ))}
                   </div>

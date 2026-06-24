@@ -9,12 +9,16 @@ import type { CalendarEvent } from './calendarEvent';
 import type { Job } from './job';
 
 export interface DashboardSummary {
-  activeJobsCount: number;
-  pendingEstimatesCount: number;
-  pendingEstimatesTotal: number;
-  thisMonthRevenue: number;
-  totalClientsCount: number;
-  upcomingEventsCount: number;
+  activeJobs: number;
+  jobsInProgress: number;
+  jobsFinished: number;
+  estimatesDrafted: number;
+  estimatesSent: number;
+  totalClients: number;
+  unpaidInvoices: number;
+  paidJobs: number;
+  totalUnpaidAmount: number;
+  totalPaidAmount: number;
   recentJobs: Job[];
   upcomingEvents: CalendarEvent[];
 }

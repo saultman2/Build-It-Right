@@ -1,0 +1,554 @@
+Here is the **copy paste prompt** to give Codex/Replit/Cursor:
+
+```text
+Revise and rebuild this app into a 100% functioning construction business manager and estimator app.
+
+Do not leave this as a demo. Remove all fake numbers, fake jobs, fake upcoming events, fake estimates, fake customers, fake examples, fake templates, and pre-filled sample data. Every dollar amount, quantity, labor hour, total, tax, markup, and setting must default to 0 or blank. The app should look complete, but all templates must be empty and ready for the user to fill out.
+
+The goal is to build a real web app first, then later convert it into an iOS app. Build it mobile-friendly, responsive, and installable as a PWA if possible.
+
+Use apps like SimplyWise Cost Estimator, Jobber, Joist, Buildertrend, Contractor Foreman, and general construction manager apps as feature inspiration, but do not copy their branding or exact design. The app should combine estimating, material lists, job tracking, scheduling, customer management, invoices, photos, and payment tracking in one place.
+
+Current construction apps commonly focus on estimates, invoices, payments, job management, scheduling, daily reports, time/material tracking, client communication, and project financials. Jobber focuses on quotes, scheduling, invoicing, payments, and customer management. Buildertrend includes estimates, budgets, purchase orders, invoices, files, messaging, scheduling, change orders, daily logs, and payments. Joist focuses on estimates, invoices, payments, and project management for contractors. Use these as guidance for the feature set. :contentReference[oaicite:0]{index=0}
+
+MAIN BUILD REQUIREMENTS
+
+Build a full-stack construction business management app with:
+
+1. Frontend
+2. Backend
+3. Database
+4. Authentication
+5. User/company profile
+6. Logo upload
+7. Customer records
+8. Job records
+9. Material list builder
+10. Estimate generator
+11. Printable PDF estimates
+12. Email/text estimate sending
+13. Job stage tracking
+14. Work progress tracking
+15. Finished job records
+16. Paid/unpaid tracking
+17. Optional invoice/payment page
+18. Settings page
+19. Empty usable templates
+20. No fake demo examples
+
+Use a clean, professional contractor-focused design. It should feel like a real construction estimating/business app, not an AI demo.
+
+TECH STACK
+
+Use a reliable modern stack:
+
+Frontend:
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- shadcn/ui or clean custom components
+
+Backend:
+- Next.js API routes or server actions
+- Supabase or PostgreSQL database
+- Prisma if needed
+
+Auth:
+- Email/password login
+- Secure user sessions
+- Each user/company can only see their own data
+
+File storage:
+- Company logo upload
+- Job photos upload
+- Before and after photos
+- Receipts/material photos
+- Estimate PDF storage if possible
+
+Email/Text:
+- Email estimates using a real email provider setup such as Resend, SendGrid, or SMTP
+- Text estimates using Twilio or a pluggable SMS provider
+- If API keys are missing, show a clean warning instead of fake sending
+
+PDF:
+- Generate a professional printable estimate PDF
+- Include company logo, company name, phone number, email, address, customer info, job info, material totals, labor totals, optional charges, grand total, notes, terms, and signature/approval area
+
+GLOBAL RULES
+
+Remove all example content.
+
+No pre-filled jobs.
+No fake customers.
+No fake upcoming events.
+No fake revenue charts.
+No fake estimate examples.
+No fake material examples.
+No fake paid jobs.
+No fake invoices.
+No fake numbers.
+No placeholder totals except 0.
+No “John Smith”, “Kitchen Remodel”, “Roof Repair”, or any other demo data.
+
+Every page should have an empty state that says something natural like:
+
+“No jobs yet. Create your first job to get started.”
+
+All forms must be functional.
+All buttons must work.
+All pages must save data.
+All totals must calculate correctly.
+All records must persist to the database.
+
+COMPANY SETTINGS PAGE
+
+Create a Settings page where the business owner can enter:
+
+- Company name
+- Logo
+- Phone number
+- Email
+- Website
+- Address
+- License number, optional
+- Insurance note, optional
+- Default tax rate, default 0
+- Default labor rate, default 0
+- Default markup percentage, default 0
+- Default terms and conditions, blank
+- Estimate footer message, blank
+
+The company logo and contact info must automatically appear on all printed/emailable/textable estimates.
+
+CUSTOMER PAGE
+
+Create a customer management page with:
+
+- Customer name
+- Phone
+- Email
+- Address
+- Notes
+- Linked jobs
+- Estimate history
+- Invoice/payment history
+
+No fake customers.
+
+JOB TRACKING PAGE
+
+Create a Jobs page that tracks each job through stages.
+
+Required job stages:
+
+1. New Job
+2. Material List
+3. Estimate
+4. Estimate Sent
+5. Approved
+6. Work In Progress
+7. Work Finished
+8. Invoiced
+9. Paid
+
+The user should be able to move a job through stages manually.
+
+Each job should have:
+
+- Job title
+- Customer
+- Job address
+- Job description
+- Job type
+- Priority
+- Status/stage
+- Created date
+- Start date, optional
+- Finish date, optional
+- Notes
+- Before photos
+- During photos
+- After photos
+- Receipts
+- Material list
+- Estimate
+- Invoice/payment status
+
+Build the Jobs page as either a list and Kanban board, or both. The status board should show real jobs only. If there are no jobs, show a clean empty state.
+
+MATERIAL LIST PAGE
+
+Create a complete Material List page.
+
+Each material list belongs to a job.
+
+Each material item must have:
+
+- Item name
+- Description
+- Quantity
+- Unit
+- Unit price
+- Line total
+- Supplier, optional
+- SKU/model number, optional
+- Category, optional
+- Taxable toggle, default false
+- Markup toggle, default false
+- Notes, optional
+
+Formula:
+
+Line total = quantity x unit price
+
+The material list must show:
+
+- Material subtotal
+- Taxable material subtotal
+- Tax amount, optional
+- Markup amount, optional
+- Material grand total
+
+All values default to 0.
+
+The user must be able to:
+
+- Add item
+- Edit item
+- Delete item
+- Duplicate item
+- Reorder items
+- Save material list
+- Attach material photos or receipts
+- Export material list
+- Use material list to generate estimate
+
+No example materials should be shown.
+
+ESTIMATE PAGE
+
+Create a detailed estimate builder that automatically generates from the material list.
+
+The estimate must pull in:
+
+- Customer info
+- Job info
+- Material list
+- Material subtotal
+- Material total
+
+The estimate must allow optional sections. Each section should have a checkbox or toggle so the user can include or exclude it.
+
+Optional estimate sections:
+
+- Materials
+- Labor
+- Equipment
+- Permits
+- Disposal
+- Delivery/trip fee
+- Subcontractor cost
+- Overhead
+- Profit/markup
+- Sales tax
+- Discount
+- Deposit required
+- Notes
+- Terms and conditions
+- Warranty note
+- Signature/approval line
+
+Every optional section must default to off or 0.
+
+Labor section:
+
+Allow the user to choose one of these methods:
+
+1. Flat labor cost
+2. Hourly labor cost
+3. Line-by-line labor items
+
+Labor fields:
+
+- Labor description
+- Hours
+- Hourly rate
+- Labor total
+
+Formula:
+
+Labor total = hours x hourly rate
+
+Estimate totals:
+
+- Material subtotal
+- Labor subtotal
+- Equipment subtotal
+- Other charges subtotal
+- Tax
+- Markup/profit
+- Discount
+- Deposit
+- Grand total
+- Remaining balance
+
+The estimate must auto-update when the material list changes.
+
+The user must be able to:
+
+- Generate estimate from material list
+- Edit estimate manually
+- Save draft
+- Mark estimate as sent
+- Mark estimate as approved
+- Convert estimate to invoice
+- Print estimate
+- Download estimate PDF
+- Email estimate
+- Text estimate
+- Duplicate estimate
+- Delete estimate
+
+PRINTABLE/EMAILABLE/TEXTABLE ESTIMATE
+
+Build a professional estimate output page.
+
+It must include:
+
+- Company logo
+- Company name
+- Phone number
+- Email
+- Website
+- Address
+- Customer name
+- Customer phone
+- Customer email
+- Job address
+- Estimate number
+- Estimate date
+- Expiration date, optional
+- Scope of work
+- Material line items
+- Labor line items
+- Optional charges
+- Subtotals
+- Grand total
+- Deposit required
+- Terms
+- Notes
+- Approval/signature area
+
+Add buttons:
+
+- Print
+- Download PDF
+- Email
+- Text
+- Mark as sent
+- Mark as approved
+
+When emailed or texted, the message should include a clean short message and a link or PDF attachment.
+
+INVOICE/PAYMENT PAGE
+
+Create an invoice/payment tracking page.
+
+Invoice should be generated from approved estimate.
+
+Invoice fields:
+
+- Invoice number
+- Customer
+- Job
+- Invoice date
+- Due date
+- Total amount
+- Amount paid
+- Balance due
+- Payment status
+
+Payment statuses:
+
+- Unpaid
+- Partial
+- Paid
+- Overdue
+
+Payment methods:
+
+- Cash
+- Check
+- Card
+- Bank transfer
+- Other
+
+The user should be able to mark a job as paid. Once paid, the job should move to the Paid stage.
+
+DASHBOARD
+
+The dashboard should be clean and useful, but no fake numbers.
+
+Show real data only:
+
+- Total active jobs
+- Estimates drafted
+- Estimates sent
+- Jobs in progress
+- Jobs finished
+- Unpaid invoices
+- Paid jobs
+- Total unpaid amount
+- Total paid amount
+
+If there is no data, all numbers should show 0.
+
+Do not show fake charts unless they are based on real user data.
+
+CALENDAR/SCHEDULE PAGE
+
+Create a schedule page, but remove all fake upcoming events.
+
+Allow the user to schedule:
+
+- Estimate appointments
+- Job start dates
+- Job finish dates
+- Follow-ups
+- Payment reminders
+
+Show empty calendar if nothing is scheduled.
+
+PHOTOS/RECEIPTS
+
+Each job should allow:
+
+- Before photos
+- During photos
+- After photos
+- Receipt photos
+- Material photos
+
+Photos should be organized by job.
+
+SEARCH/FILTERS
+
+Add search and filters for:
+
+- Jobs
+- Customers
+- Estimates
+- Invoices
+- Job status
+- Paid/unpaid
+- Date range
+
+DATABASE TABLES
+
+Create database tables for:
+
+users
+companies
+customers
+jobs
+job_photos
+materials
+material_lists
+estimates
+estimate_line_items
+invoices
+payments
+scheduled_events
+receipts
+settings
+
+Make sure relationships are correct.
+
+Each company/user must only access their own records.
+
+APP FLOW
+
+The app should work like this:
+
+1. User creates company profile.
+2. User adds customer.
+3. User creates job.
+4. User builds material list.
+5. App calculates material totals.
+6. User generates estimate from material list.
+7. User optionally adds labor, tax, markup, fees, notes, terms, and deposit.
+8. App calculates finished estimate.
+9. User prints, downloads, emails, or texts estimate.
+10. User marks estimate as sent.
+11. User marks estimate as approved.
+12. Job moves to Work In Progress.
+13. User adds progress notes/photos.
+14. User marks job finished.
+15. User converts estimate to invoice.
+16. User marks invoice paid.
+17. Job moves to Paid.
+
+IMPORTANT UI REQUIREMENTS
+
+Use clear contractor-friendly language.
+
+Use buttons like:
+
+- Create Job
+- Add Customer
+- Add Material
+- Generate Estimate
+- Save Draft
+- Print Estimate
+- Email Estimate
+- Text Estimate
+- Mark Sent
+- Mark Approved
+- Start Work
+- Mark Finished
+- Create Invoice
+- Mark Paid
+
+Do not use overly technical wording.
+
+Make the app clean, simple, and easy for construction workers, contractors, owners, and small crews.
+
+ERROR HANDLING
+
+Add validation:
+
+- Quantity cannot be negative
+- Price cannot be negative
+- Totals must never break
+- Missing customer should show warning
+- Missing company profile should show warning before sending estimate
+- Missing email/SMS API key should show setup message
+- Empty material list can still create estimate but totals must be 0
+
+SECURITY
+
+Use secure auth.
+Protect all API routes.
+Validate server-side.
+Do not expose API keys.
+Use environment variables.
+Make sure users cannot see another company’s data.
+
+FINAL EXPECTATION
+
+This needs to be a complete functioning web app, not a visual mockup.
+
+All pages must save, load, edit, and delete real data.
+All calculations must work.
+All estimates must generate from the material list.
+All templates must be empty and ready to fill out.
+All fake examples and fake numbers must be removed.
+The app should be ready to use as a web app first, then later wrapped or rebuilt into an iOS app.
+```
+
+A shorter version you can add at the top of your build request:
+
+```text
+Most important: remove every fake example, fake number, fake job, fake event, and fake customer. Make every template blank and fillable. All money and quantity values must default to 0. The material list must drive the estimate automatically. The finished estimate must be printable, downloadable, emailable, and textable with company logo and contact info attached. Build this as a real full-stack construction business manager app, not a demo.
+```

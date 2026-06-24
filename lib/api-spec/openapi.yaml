@@ -9,24 +9,30 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: company
+    description: Company profile and settings
   - name: clients
-    description: Client management
+    description: Customer management
   - name: jobs
     description: Job/project management
+  - name: materials
+    description: Per-job material lists
   - name: estimates
     description: Estimate management
   - name: estimate-items
     description: Estimate line items
-  - name: materials
-    description: Material catalog
+  - name: invoices
+    description: Invoices and payments
   - name: photos
-    description: Job photos (before/after)
+    description: Job photos
   - name: receipts
     description: Receipt management
   - name: calendar
     description: Calendar events / scheduling
   - name: dashboard
     description: Dashboard summary data
+  - name: Storage
+    description: Object storage upload and serving endpoints
 
 paths:
   /healthz:
@@ -42,9 +48,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
-  # ──────────────────────────────────────
-  # DASHBOARD
-  # ──────────────────────────────────────
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -59,13 +62,46 @@ paths:
                 $ref: "#/components/schemas/DashboardSummary"
 
   # ──────────────────────────────────────
-  # CLIENTS
+  # COMPANY / SETTINGS
+  # ──────────────────────────────────────
+  /company:
+    get:
+      operationId: getCompany
+      tags: [company]
+      summary: Get current company profile/settings
+      responses:
+        "200":
+          description: Company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+    patch:
+      operationId: updateCompany
+      tags: [company]
+      summary: Update company profile/settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyUpdate"
+      responses:
+        "200":
+          description: Updated company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+
+  # ──────────────────────────────────────
+  # CLIENTS / CUSTOMERS
   # ──────────────────────────────────────
   /clients:
     get:
       operationId: listClients
       tags: [clients]
-      summary: List all clients
+      summary: List customers
       parameters:
         - name: search
           in: query
@@ -73,7 +109,7 @@ paths:
             type: string
       responses:
         "200":
-          description: List of clients
+          description: List of customers
           content:
             application/json:
               schema:
@@ -83,7 +119,7 @@ paths:
     post:
       operationId: createClient
       tags: [clients]
-      summary: Create a new client
+      summary: Create a customer
       requestBody:
         required: true
         content:
@@ -92,7 +128,7 @@ paths:
               $ref: "#/components/schemas/ClientInput"
       responses:
         "201":
-          description: Created client
+          description: Created customer
           content:
             application/json:
               schema:
@@ -102,7 +138,7 @@ paths:
     get:
       operationId: getClient
       tags: [clients]
-      summary: Get a client by ID
+      summary: Get a customer by ID
       parameters:
         - name: id
           in: path
@@ -111,7 +147,7 @@ paths:
             type: integer
       responses:
         "200":
-          description: Client
+          description: Customer
           content:
             application/json:
               schema:
@@ -121,7 +157,7 @@ paths:
     patch:
       operationId: updateClient
       tags: [clients]
-      summary: Update a client
+      summary: Update a customer
       parameters:
         - name: id
           in: path
@@ -136,7 +172,7 @@ paths:
               $ref: "#/components/schemas/ClientUpdate"
       responses:
         "200":
-          description: Updated client
+          description: Updated customer
           content:
             application/json:
               schema:
@@ -144,7 +180,7 @@ paths:
     delete:
       operationId: deleteClient
       tags: [clients]
-      summary: Delete a client
+      summary: Delete a customer
       parameters:
         - name: id
           in: path
@@ -159,7 +195,7 @@ paths:
     get:
       operationId: getClientHistory
       tags: [clients]
-      summary: Get client job history and totals
+      summary: Get customer job history and totals
       parameters:
         - name: id
           in: path
@@ -168,7 +204,7 @@ paths:
             type: integer
       responses:
         "200":
-          description: Client history
+          description: Customer history
           content:
             application/json:
               schema:
@@ -181,7 +217,7 @@ paths:
     get:
       operationId: listJobs
       tags: [jobs]
-      summary: List all jobs
+      summary: List jobs
       parameters:
         - name: status
           in: query
@@ -191,6 +227,10 @@ paths:
           in: query
           schema:
             type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: List of jobs
@@ -203,7 +243,7 @@ paths:
     post:
       operationId: createJob
       tags: [jobs]
-      summary: Create a new job
+      summary: Create a job
       requestBody:
         required: true
         content:
@@ -279,7 +319,7 @@ paths:
     get:
       operationId: getJobSummary
       tags: [jobs]
-      summary: Get job financial and progress summary
+      summary: Get job with related counts/totals
       parameters:
         - name: id
           in: path
@@ -295,22 +335,130 @@ paths:
                 $ref: "#/components/schemas/JobSummary"
 
   # ──────────────────────────────────────
+  # MATERIAL LISTS (per job)
+  # ──────────────────────────────────────
+  /jobs/{jobId}/material-list:
+    get:
+      operationId: getJobMaterialList
+      tags: [materials]
+      summary: Get (or create) the material list for a job, with items and totals
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Material list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialListDetail"
+    patch:
+      operationId: updateJobMaterialList
+      tags: [materials]
+      summary: Update material list meta (name/notes)
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaterialListUpdate"
+      responses:
+        "200":
+          description: Updated material list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialListDetail"
+
+  /jobs/{jobId}/material-list/items:
+    post:
+      operationId: createMaterialItem
+      tags: [materials]
+      summary: Add an item to the job material list
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaterialItemInput"
+      responses:
+        "201":
+          description: Created material item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialItem"
+
+  /material-items/{id}:
+    patch:
+      operationId: updateMaterialItem
+      tags: [materials]
+      summary: Update a material item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaterialItemUpdate"
+      responses:
+        "200":
+          description: Updated material item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialItem"
+    delete:
+      operationId: deleteMaterialItem
+      tags: [materials]
+      summary: Delete a material item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ──────────────────────────────────────
   # ESTIMATES
   # ──────────────────────────────────────
   /estimates:
     get:
       operationId: listEstimates
       tags: [estimates]
-      summary: List all estimates
+      summary: List estimates
       parameters:
-        - name: jobId
-          in: query
-          schema:
-            type: integer
         - name: status
           in: query
           schema:
             type: string
+        - name: jobId
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: List of estimates
@@ -323,7 +471,7 @@ paths:
     post:
       operationId: createEstimate
       tags: [estimates]
-      summary: Create a new estimate
+      summary: Create an estimate (optionally from a job's material list)
       requestBody:
         required: true
         content:
@@ -336,13 +484,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Estimate"
+                $ref: "#/components/schemas/EstimateDetail"
 
   /estimates/{id}:
     get:
       operationId: getEstimate
       tags: [estimates]
-      summary: Get an estimate by ID
+      summary: Get an estimate with items
       parameters:
         - name: id
           in: path
@@ -351,17 +499,17 @@ paths:
             type: integer
       responses:
         "200":
-          description: Estimate
+          description: Estimate detail
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Estimate"
+                $ref: "#/components/schemas/EstimateDetail"
         "404":
           description: Not found
     patch:
       operationId: updateEstimate
       tags: [estimates]
-      summary: Update an estimate
+      summary: Update an estimate (recalculates totals)
       parameters:
         - name: id
           in: path
@@ -380,7 +528,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Estimate"
+                $ref: "#/components/schemas/EstimateDetail"
     delete:
       operationId: deleteEstimate
       tags: [estimates]
@@ -399,7 +547,7 @@ paths:
     post:
       operationId: sendEstimate
       tags: [estimates]
-      summary: Mark estimate as sent to client
+      summary: Send estimate via email or text (marks as sent)
       parameters:
         - name: id
           in: path
@@ -414,35 +562,51 @@ paths:
               $ref: "#/components/schemas/SendEstimateInput"
       responses:
         "200":
-          description: Estimate sent
+          description: Send result
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Estimate"
+                $ref: "#/components/schemas/SendResult"
 
-  # ──────────────────────────────────────
-  # ESTIMATE LINE ITEMS
-  # ──────────────────────────────────────
-  /estimates/{estimateId}/items:
-    get:
-      operationId: listEstimateItems
-      tags: [estimate-items]
-      summary: List all line items for an estimate
+  /estimates/{id}/approve:
+    post:
+      operationId: approveEstimate
+      tags: [estimates]
+      summary: Mark estimate approved
       parameters:
-        - name: estimateId
+        - name: id
           in: path
           required: true
           schema:
             type: integer
       responses:
         "200":
-          description: List of estimate line items
+          description: Approved estimate
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/EstimateItem"
+                $ref: "#/components/schemas/EstimateDetail"
+
+  /estimates/{id}/convert-to-invoice:
+    post:
+      operationId: convertEstimateToInvoice
+      tags: [estimates]
+      summary: Create an invoice from an approved estimate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Created invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /estimates/{estimateId}/items:
     post:
       operationId: createEstimateItem
       tags: [estimate-items]
@@ -461,24 +625,19 @@ paths:
               $ref: "#/components/schemas/EstimateItemInput"
       responses:
         "201":
-          description: Created line item
+          description: Created item
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/EstimateItem"
 
-  /estimates/{estimateId}/items/{itemId}:
+  /estimate-items/{id}:
     patch:
       operationId: updateEstimateItem
       tags: [estimate-items]
-      summary: Update a line item
+      summary: Update an estimate line item
       parameters:
-        - name: estimateId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: itemId
+        - name: id
           in: path
           required: true
           schema:
@@ -491,7 +650,7 @@ paths:
               $ref: "#/components/schemas/EstimateItemUpdate"
       responses:
         "200":
-          description: Updated line item
+          description: Updated item
           content:
             application/json:
               schema:
@@ -499,14 +658,9 @@ paths:
     delete:
       operationId: deleteEstimateItem
       tags: [estimate-items]
-      summary: Delete a line item
+      summary: Delete an estimate line item
       parameters:
-        - name: estimateId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: itemId
+        - name: id
           in: path
           required: true
           schema:
@@ -516,58 +670,50 @@ paths:
           description: Deleted
 
   # ──────────────────────────────────────
-  # MATERIALS
+  # INVOICES / PAYMENTS
   # ──────────────────────────────────────
-  /materials:
+  /invoices:
     get:
-      operationId: listMaterials
-      tags: [materials]
-      summary: List materials with optional price comparison
+      operationId: listInvoices
+      tags: [invoices]
+      summary: List invoices
       parameters:
-        - name: zipCode
-          in: query
-          schema:
-            type: string
-        - name: category
-          in: query
-          schema:
-            type: string
-        - name: search
+        - name: status
           in: query
           schema:
             type: string
       responses:
         "200":
-          description: List of materials
+          description: List of invoices
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Material"
+                  $ref: "#/components/schemas/Invoice"
     post:
-      operationId: createMaterial
-      tags: [materials]
-      summary: Create a material in the catalog
+      operationId: createInvoice
+      tags: [invoices]
+      summary: Create an invoice
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MaterialInput"
+              $ref: "#/components/schemas/InvoiceInput"
       responses:
         "201":
-          description: Created material
+          description: Created invoice
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Material"
+                $ref: "#/components/schemas/Invoice"
 
-  /materials/{id}:
+  /invoices/{id}:
     get:
-      operationId: getMaterial
-      tags: [materials]
-      summary: Get a material by ID
+      operationId: getInvoice
+      tags: [invoices]
+      summary: Get an invoice with payments
       parameters:
         - name: id
           in: path
@@ -576,15 +722,17 @@ paths:
             type: integer
       responses:
         "200":
-          description: Material
+          description: Invoice detail
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Material"
+                $ref: "#/components/schemas/InvoiceDetail"
+        "404":
+          description: Not found
     patch:
-      operationId: updateMaterial
-      tags: [materials]
-      summary: Update a material
+      operationId: updateInvoice
+      tags: [invoices]
+      summary: Update an invoice
       parameters:
         - name: id
           in: path
@@ -596,18 +744,18 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MaterialUpdate"
+              $ref: "#/components/schemas/InvoiceUpdate"
       responses:
         "200":
-          description: Updated material
+          description: Updated invoice
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Material"
+                $ref: "#/components/schemas/InvoiceDetail"
     delete:
-      operationId: deleteMaterial
-      tags: [materials]
-      summary: Delete a material
+      operationId: deleteInvoice
+      tags: [invoices]
+      summary: Delete an invoice
       parameters:
         - name: id
           in: path
@@ -618,32 +766,13 @@ paths:
         "204":
           description: Deleted
 
-  /materials/{id}/prices:
-    get:
-      operationId: getMaterialPrices
-      tags: [materials]
-      summary: Get supplier price comparison for a material
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Price comparison list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SupplierPrice"
+  /invoices/{invoiceId}/payments:
     post:
-      operationId: addMaterialPrice
-      tags: [materials]
-      summary: Add a supplier price for a material
+      operationId: createPayment
+      tags: [invoices]
+      summary: Record a payment on an invoice
       parameters:
-        - name: id
+        - name: invoiceId
           in: path
           required: true
           schema:
@@ -653,14 +782,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SupplierPriceInput"
+              $ref: "#/components/schemas/PaymentInput"
       responses:
         "201":
-          description: Created price entry
+          description: Updated invoice with payment applied
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SupplierPrice"
+                $ref: "#/components/schemas/InvoiceDetail"
 
   # ──────────────────────────────────────
   # JOB PHOTOS
@@ -669,7 +798,7 @@ paths:
     get:
       operationId: listJobPhotos
       tags: [photos]
-      summary: List all photos for a job
+      summary: List photos for a job
       parameters:
         - name: jobId
           in: path
@@ -686,7 +815,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/JobPhoto"
     post:
-      operationId: addJobPhoto
+      operationId: createJobPhoto
       tags: [photos]
       summary: Add a photo to a job
       parameters:
@@ -709,18 +838,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/JobPhoto"
 
-  /jobs/{jobId}/photos/{photoId}:
+  /job-photos/{id}:
     patch:
       operationId: updateJobPhoto
       tags: [photos]
-      summary: Update a photo caption or type
+      summary: Update a job photo
       parameters:
-        - name: jobId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: photoId
+        - name: id
           in: path
           required: true
           schema:
@@ -741,14 +865,9 @@ paths:
     delete:
       operationId: deleteJobPhoto
       tags: [photos]
-      summary: Delete a photo
+      summary: Delete a job photo
       parameters:
-        - name: jobId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: photoId
+        - name: id
           in: path
           required: true
           schema:
@@ -764,7 +883,7 @@ paths:
     get:
       operationId: listReceipts
       tags: [receipts]
-      summary: List all receipts
+      summary: List receipts
       parameters:
         - name: jobId
           in: query
@@ -786,7 +905,7 @@ paths:
     post:
       operationId: createReceipt
       tags: [receipts]
-      summary: Create a new receipt
+      summary: Create a receipt
       requestBody:
         required: true
         content:
@@ -819,6 +938,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Receipt"
+        "404":
+          description: Not found
     patch:
       operationId: updateReceipt
       tags: [receipts]
@@ -857,7 +978,7 @@ paths:
           description: Deleted
 
   # ──────────────────────────────────────
-  # CALENDAR / EVENTS
+  # CALENDAR EVENTS
   # ──────────────────────────────────────
   /events:
     get:
@@ -865,14 +986,6 @@ paths:
       tags: [calendar]
       summary: List calendar events
       parameters:
-        - name: startDate
-          in: query
-          schema:
-            type: string
-        - name: endDate
-          in: query
-          schema:
-            type: string
         - name: jobId
           in: query
           schema:
@@ -922,10 +1035,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CalendarEvent"
+        "404":
+          description: Not found
     patch:
       operationId: updateEvent
       tags: [calendar]
-      summary: Update a calendar event
+      summary: Update an event
       parameters:
         - name: id
           in: path
@@ -948,7 +1063,7 @@ paths:
     delete:
       operationId: deleteEvent
       tags: [calendar]
-      summary: Delete a calendar event
+      summary: Delete an event
       parameters:
         - name: id
           in: path
@@ -959,31 +1074,92 @@ paths:
         "204":
           description: Deleted
 
+  # ──────────────────────────────────────
+  # STORAGE
+  # ──────────────────────────────────────
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required: [status]
 
-    # ── DASHBOARD ──
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
     DashboardSummary:
       type: object
+      required:
+        - activeJobs
+        - jobsInProgress
+        - jobsFinished
+        - estimatesDrafted
+        - estimatesSent
+        - totalClients
+        - unpaidInvoices
+        - paidJobs
+        - totalUnpaidAmount
+        - totalPaidAmount
+        - recentJobs
+        - upcomingEvents
       properties:
-        activeJobsCount:
+        activeJobs:
           type: integer
-        pendingEstimatesCount:
+        jobsInProgress:
           type: integer
-        pendingEstimatesTotal:
+        jobsFinished:
+          type: integer
+        estimatesDrafted:
+          type: integer
+        estimatesSent:
+          type: integer
+        totalClients:
+          type: integer
+        unpaidInvoices:
+          type: integer
+        paidJobs:
+          type: integer
+        totalUnpaidAmount:
           type: number
-        thisMonthRevenue:
+        totalPaidAmount:
           type: number
-        totalClientsCount:
-          type: integer
-        upcomingEventsCount:
-          type: integer
         recentJobs:
           type: array
           items:
@@ -992,63 +1168,131 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CalendarEvent"
-      required:
-        - activeJobsCount
-        - pendingEstimatesCount
-        - pendingEstimatesTotal
-        - thisMonthRevenue
-        - totalClientsCount
-        - upcomingEventsCount
-        - recentJobs
-        - upcomingEvents
 
-    # ── CLIENTS ──
+    Company:
+      type: object
+      required: [id, ownerId, defaultTaxRate, defaultLaborRate, defaultMarkupPct, createdAt]
+      properties:
+        id:
+          type: integer
+        ownerId:
+          type: string
+        name:
+          type: [string, "null"]
+        logoUrl:
+          type: [string, "null"]
+        phone:
+          type: [string, "null"]
+        email:
+          type: [string, "null"]
+        website:
+          type: [string, "null"]
+        address:
+          type: [string, "null"]
+        city:
+          type: [string, "null"]
+        state:
+          type: [string, "null"]
+        zipCode:
+          type: [string, "null"]
+        licenseNumber:
+          type: [string, "null"]
+        insuranceNote:
+          type: [string, "null"]
+        defaultTaxRate:
+          type: number
+        defaultLaborRate:
+          type: number
+        defaultMarkupPct:
+          type: number
+        defaultTerms:
+          type: [string, "null"]
+        estimateFooter:
+          type: [string, "null"]
+        createdAt:
+          type: string
+
+    CompanyUpdate:
+      type: object
+      properties:
+        name:
+          type: [string, "null"]
+        logoUrl:
+          type: [string, "null"]
+        phone:
+          type: [string, "null"]
+        email:
+          type: [string, "null"]
+        website:
+          type: [string, "null"]
+        address:
+          type: [string, "null"]
+        city:
+          type: [string, "null"]
+        state:
+          type: [string, "null"]
+        zipCode:
+          type: [string, "null"]
+        licenseNumber:
+          type: [string, "null"]
+        insuranceNote:
+          type: [string, "null"]
+        defaultTaxRate:
+          type: number
+        defaultLaborRate:
+          type: number
+        defaultMarkupPct:
+          type: number
+        defaultTerms:
+          type: [string, "null"]
+        estimateFooter:
+          type: [string, "null"]
+
     Client:
       type: object
+      required: [id, name, createdAt]
       properties:
         id:
           type: integer
         name:
           type: string
         email:
-          type: ["string", "null"]
+          type: [string, "null"]
         phone:
-          type: ["string", "null"]
+          type: [string, "null"]
         address:
-          type: ["string", "null"]
+          type: [string, "null"]
         city:
-          type: ["string", "null"]
+          type: [string, "null"]
         state:
-          type: ["string", "null"]
+          type: [string, "null"]
         zipCode:
-          type: ["string", "null"]
+          type: [string, "null"]
         notes:
-          type: ["string", "null"]
+          type: [string, "null"]
         createdAt:
           type: string
-      required: [id, name, createdAt]
 
     ClientInput:
       type: object
+      required: [name]
       properties:
         name:
           type: string
-          minLength: 1
         email:
-          type: string
+          type: [string, "null"]
         phone:
-          type: string
+          type: [string, "null"]
         address:
-          type: string
+          type: [string, "null"]
         city:
-          type: string
+          type: [string, "null"]
         state:
-          type: string
+          type: [string, "null"]
         zipCode:
-          type: string
+          type: [string, "null"]
         notes:
-          type: string
-      required: [name]
+          type: [string, "null"]
 
     ClientUpdate:
       type: object
@@ -1056,22 +1300,23 @@ components:
         name:
           type: string
         email:
-          type: string
+          type: [string, "null"]
         phone:
-          type: string
+          type: [string, "null"]
         address:
-          type: string
+          type: [string, "null"]
         city:
-          type: string
+          type: [string, "null"]
         state:
-          type: string
+          type: [string, "null"]
         zipCode:
-          type: string
+          type: [string, "null"]
         notes:
-          type: string
+          type: [string, "null"]
 
     ClientHistory:
       type: object
+      required: [clientId, totalJobs, completedJobs, totalRevenue, jobs]
       properties:
         clientId:
           type: integer
@@ -1085,77 +1330,82 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Job"
-      required: [clientId, totalJobs, completedJobs, totalRevenue, jobs]
 
-    # ── JOBS ──
     Job:
       type: object
+      required: [id, title, status, priority, createdAt]
       properties:
         id:
           type: integer
         title:
           type: string
         clientId:
-          type: ["integer", "null"]
+          type: [integer, "null"]
         clientName:
-          type: ["string", "null"]
+          type: [string, "null"]
         status:
           type: string
-          enum: [lead, scheduled, in_progress, completed, cancelled]
+        jobType:
+          type: [string, "null"]
+        priority:
+          type: string
         description:
-          type: ["string", "null"]
+          type: [string, "null"]
         address:
-          type: ["string", "null"]
+          type: [string, "null"]
         city:
-          type: ["string", "null"]
+          type: [string, "null"]
         state:
-          type: ["string", "null"]
+          type: [string, "null"]
         zipCode:
-          type: ["string", "null"]
+          type: [string, "null"]
         startDate:
-          type: ["string", "null"]
+          type: [string, "null"]
         endDate:
-          type: ["string", "null"]
+          type: [string, "null"]
         estimatedValue:
-          type: ["number", "null"]
+          type: [number, "null"]
         actualCost:
-          type: ["number", "null"]
+          type: [number, "null"]
         notes:
-          type: ["string", "null"]
+          type: [string, "null"]
         createdAt:
           type: string
-      required: [id, title, status, createdAt]
 
     JobInput:
       type: object
+      required: [title]
       properties:
         title:
           type: string
-          minLength: 1
         clientId:
-          type: integer
+          type: [integer, "null"]
         status:
           type: string
-          enum: [lead, scheduled, in_progress, completed, cancelled]
+        jobType:
+          type: [string, "null"]
+        priority:
+          type: string
         description:
-          type: string
+          type: [string, "null"]
         address:
-          type: string
+          type: [string, "null"]
         city:
-          type: string
+          type: [string, "null"]
         state:
-          type: string
+          type: [string, "null"]
         zipCode:
-          type: string
+          type: [string, "null"]
         startDate:
-          type: string
+          type: [string, "null"]
         endDate:
-          type: string
+          type: [string, "null"]
         estimatedValue:
-          type: number
+          type: [number, string, "null"]
+        actualCost:
+          type: [number, string, "null"]
         notes:
-          type: string
-      required: [title]
+          type: [string, "null"]
 
     JobUpdate:
       type: object
@@ -1163,325 +1413,602 @@ components:
         title:
           type: string
         clientId:
-          type: integer
+          type: [integer, "null"]
         status:
           type: string
-          enum: [lead, scheduled, in_progress, completed, cancelled]
+        jobType:
+          type: [string, "null"]
+        priority:
+          type: string
         description:
-          type: string
+          type: [string, "null"]
         address:
-          type: string
+          type: [string, "null"]
         city:
-          type: string
+          type: [string, "null"]
         state:
-          type: string
+          type: [string, "null"]
         zipCode:
-          type: string
+          type: [string, "null"]
         startDate:
-          type: string
+          type: [string, "null"]
         endDate:
-          type: string
+          type: [string, "null"]
         estimatedValue:
-          type: number
+          type: [number, string, "null"]
         actualCost:
-          type: number
+          type: [number, string, "null"]
         notes:
-          type: string
+          type: [string, "null"]
 
     JobSummary:
       type: object
+      required: [job, photoCount, receiptTotal, estimateCount, hasMaterialList]
       properties:
-        jobId:
-          type: integer
-        estimateTotal:
-          type: number
-        receiptTotal:
-          type: number
+        job:
+          $ref: "#/components/schemas/Job"
         photoCount:
           type: integer
-        beforePhotoCount:
-          type: integer
-        afterPhotoCount:
-          type: integer
+        receiptTotal:
+          type: number
         estimateCount:
           type: integer
-        acceptedEstimateTotal:
-          type: number
-      required:
-        - jobId
-        - estimateTotal
-        - receiptTotal
-        - photoCount
-        - beforePhotoCount
-        - afterPhotoCount
-        - estimateCount
-        - acceptedEstimateTotal
+        hasMaterialList:
+          type: boolean
 
-    # ── ESTIMATES ──
-    Estimate:
+    MaterialItem:
       type: object
+      required: [id, materialListId, name, quantity, unit, unitPrice, lineTotal, taxable, markup, sortOrder]
+      properties:
+        id:
+          type: integer
+        materialListId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        quantity:
+          type: number
+        unit:
+          type: string
+        unitPrice:
+          type: number
+        lineTotal:
+          type: number
+        supplier:
+          type: [string, "null"]
+        sku:
+          type: [string, "null"]
+        category:
+          type: [string, "null"]
+        taxable:
+          type: boolean
+        markup:
+          type: boolean
+        notes:
+          type: [string, "null"]
+        sortOrder:
+          type: integer
+
+    MaterialItemInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        quantity:
+          type: [number, string]
+        unit:
+          type: string
+        unitPrice:
+          type: [number, string]
+        supplier:
+          type: [string, "null"]
+        sku:
+          type: [string, "null"]
+        category:
+          type: [string, "null"]
+        taxable:
+          type: boolean
+        markup:
+          type: boolean
+        notes:
+          type: [string, "null"]
+        sortOrder:
+          type: integer
+
+    MaterialItemUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        quantity:
+          type: [number, string]
+        unit:
+          type: string
+        unitPrice:
+          type: [number, string]
+        supplier:
+          type: [string, "null"]
+        sku:
+          type: [string, "null"]
+        category:
+          type: [string, "null"]
+        taxable:
+          type: boolean
+        markup:
+          type: boolean
+        notes:
+          type: [string, "null"]
+        sortOrder:
+          type: integer
+
+    MaterialListUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        notes:
+          type: [string, "null"]
+
+    MaterialListDetail:
+      type: object
+      required: [id, jobId, name, items, subtotal, taxableSubtotal, markupSubtotal]
       properties:
         id:
           type: integer
         jobId:
-          type: ["integer", "null"]
-        jobTitle:
-          type: ["string", "null"]
+          type: integer
+        name:
+          type: string
+        notes:
+          type: [string, "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MaterialItem"
+        subtotal:
+          type: number
+        taxableSubtotal:
+          type: number
+        markupSubtotal:
+          type: number
+
+    Estimate:
+      type: object
+      required: [id, title, status, total, createdAt]
+      properties:
+        id:
+          type: integer
+        jobId:
+          type: [integer, "null"]
         clientId:
-          type: ["integer", "null"]
+          type: [integer, "null"]
         clientName:
-          type: ["string", "null"]
+          type: [string, "null"]
+        jobTitle:
+          type: [string, "null"]
+        estimateNumber:
+          type: [string, "null"]
         title:
           type: string
         status:
           type: string
-          enum: [draft, sent, accepted, rejected, revised]
-        subtotal:
+        estimateDate:
+          type: [string, "null"]
+        validUntil:
+          type: [string, "null"]
+        total:
+          type: number
+        createdAt:
+          type: string
+
+    EstimateDetail:
+      type: object
+      required: [id, title, status, items]
+      properties:
+        id:
+          type: integer
+        jobId:
+          type: [integer, "null"]
+        clientId:
+          type: [integer, "null"]
+        clientName:
+          type: [string, "null"]
+        jobTitle:
+          type: [string, "null"]
+        estimateNumber:
+          type: [string, "null"]
+        title:
+          type: string
+        status:
+          type: string
+        estimateDate:
+          type: [string, "null"]
+        validUntil:
+          type: [string, "null"]
+        scopeOfWork:
+          type: [string, "null"]
+        includeMaterials:
+          type: boolean
+        includeLabor:
+          type: boolean
+        includeEquipment:
+          type: boolean
+        includePermits:
+          type: boolean
+        includeDisposal:
+          type: boolean
+        includeDelivery:
+          type: boolean
+        includeSubcontractor:
+          type: boolean
+        includeOverhead:
+          type: boolean
+        includeProfit:
+          type: boolean
+        includeTax:
+          type: boolean
+        includeDiscount:
+          type: boolean
+        includeDeposit:
+          type: boolean
+        laborMethod:
+          type: string
+        laborFlatCost:
+          type: number
+        materialSubtotal:
+          type: number
+        laborSubtotal:
+          type: number
+        equipmentSubtotal:
+          type: number
+        permitsAmount:
+          type: number
+        disposalAmount:
+          type: number
+        deliveryAmount:
+          type: number
+        subcontractorAmount:
+          type: number
+        overheadAmount:
+          type: number
+        otherChargesSubtotal:
           type: number
         taxRate:
           type: number
         taxAmount:
           type: number
+        markupPct:
+          type: number
+        markupAmount:
+          type: number
+        discountAmount:
+          type: number
+        depositRequired:
+          type: number
         total:
           type: number
         notes:
-          type: ["string", "null"]
+          type: [string, "null"]
+        terms:
+          type: [string, "null"]
+        warrantyNote:
+          type: [string, "null"]
         sentAt:
-          type: ["string", "null"]
-        validUntil:
-          type: ["string", "null"]
+          type: [string, "null"]
+        approvedAt:
+          type: [string, "null"]
         createdAt:
           type: string
-      required: [id, title, status, subtotal, taxRate, taxAmount, total, createdAt]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EstimateItem"
 
     EstimateInput:
       type: object
+      required: [title]
       properties:
         jobId:
-          type: integer
+          type: [integer, "null"]
         clientId:
-          type: integer
+          type: [integer, "null"]
         title:
           type: string
-          minLength: 1
-        status:
-          type: string
-          enum: [draft, sent, accepted, rejected, revised]
-        taxRate:
-          type: number
-        notes:
-          type: string
-        validUntil:
-          type: string
-      required: [title]
+        importMaterialList:
+          type: boolean
+          description: If true and jobId set, copy material list items into the estimate.
 
     EstimateUpdate:
       type: object
       properties:
         jobId:
-          type: integer
+          type: [integer, "null"]
         clientId:
-          type: integer
+          type: [integer, "null"]
+        estimateNumber:
+          type: [string, "null"]
         title:
           type: string
         status:
           type: string
-          enum: [draft, sent, accepted, rejected, revised]
-        taxRate:
-          type: number
-        notes:
-          type: string
+        estimateDate:
+          type: [string, "null"]
         validUntil:
+          type: [string, "null"]
+        scopeOfWork:
+          type: [string, "null"]
+        includeMaterials:
+          type: boolean
+        includeLabor:
+          type: boolean
+        includeEquipment:
+          type: boolean
+        includePermits:
+          type: boolean
+        includeDisposal:
+          type: boolean
+        includeDelivery:
+          type: boolean
+        includeSubcontractor:
+          type: boolean
+        includeOverhead:
+          type: boolean
+        includeProfit:
+          type: boolean
+        includeTax:
+          type: boolean
+        includeDiscount:
+          type: boolean
+        includeDeposit:
+          type: boolean
+        laborMethod:
           type: string
+        laborFlatCost:
+          type: [number, string]
+        permitsAmount:
+          type: [number, string]
+        disposalAmount:
+          type: [number, string]
+        deliveryAmount:
+          type: [number, string]
+        subcontractorAmount:
+          type: [number, string]
+        overheadAmount:
+          type: [number, string]
+        taxRate:
+          type: [number, string]
+        markupPct:
+          type: [number, string]
+        discountAmount:
+          type: [number, string]
+        depositRequired:
+          type: [number, string]
+        notes:
+          type: [string, "null"]
+        terms:
+          type: [string, "null"]
+        warrantyNote:
+          type: [string, "null"]
 
-    SendEstimateInput:
-      type: object
-      properties:
-        clientEmail:
-          type: string
-        message:
-          type: string
-      required: [clientEmail]
-
-    # ── ESTIMATE ITEMS ──
     EstimateItem:
       type: object
+      required: [id, estimateId, section, description, quantity, unit, unitPrice, hours, hourlyRate, lineTotal, sortOrder]
       properties:
         id:
           type: integer
         estimateId:
           type: integer
+        section:
+          type: string
         description:
           type: string
-        category:
-          type: string
-          enum: [labor, material, equipment, subcontractor, other]
         quantity:
           type: number
         unit:
           type: string
         unitPrice:
           type: number
-        totalPrice:
+        hours:
           type: number
-        notes:
-          type: ["string", "null"]
+        hourlyRate:
+          type: number
+        lineTotal:
+          type: number
         sortOrder:
           type: integer
-      required: [id, estimateId, description, category, quantity, unit, unitPrice, totalPrice, sortOrder]
 
     EstimateItemInput:
       type: object
+      required: [description]
       properties:
+        section:
+          type: string
         description:
           type: string
-          minLength: 1
-        category:
-          type: string
-          enum: [labor, material, equipment, subcontractor, other]
         quantity:
-          type: number
+          type: [number, string]
         unit:
           type: string
         unitPrice:
-          type: number
-        notes:
-          type: string
+          type: [number, string]
+        hours:
+          type: [number, string]
+        hourlyRate:
+          type: [number, string]
         sortOrder:
           type: integer
-      required: [description, category, quantity, unit, unitPrice]
 
     EstimateItemUpdate:
       type: object
       properties:
+        section:
+          type: string
         description:
           type: string
-        category:
-          type: string
-          enum: [labor, material, equipment, subcontractor, other]
         quantity:
-          type: number
+          type: [number, string]
         unit:
           type: string
         unitPrice:
-          type: number
-        notes:
-          type: string
+          type: [number, string]
+        hours:
+          type: [number, string]
+        hourlyRate:
+          type: [number, string]
         sortOrder:
           type: integer
 
-    # ── MATERIALS ──
-    Material:
+    SendEstimateInput:
       type: object
+      required: [channel]
+      properties:
+        channel:
+          type: string
+          enum: [email, sms]
+        to:
+          type: [string, "null"]
+        message:
+          type: [string, "null"]
+
+    SendResult:
+      type: object
+      required: [sent, marked]
+      properties:
+        sent:
+          type: boolean
+        marked:
+          type: boolean
+        warning:
+          type: [string, "null"]
+
+    Invoice:
+      type: object
+      required: [id, totalAmount, amountPaid, balanceDue, status, createdAt]
       properties:
         id:
           type: integer
-        name:
-          type: string
-        description:
-          type: ["string", "null"]
-        category:
-          type: string
-        unit:
-          type: string
-        basePrice:
+        jobId:
+          type: [integer, "null"]
+        clientId:
+          type: [integer, "null"]
+        clientName:
+          type: [string, "null"]
+        jobTitle:
+          type: [string, "null"]
+        estimateId:
+          type: [integer, "null"]
+        invoiceNumber:
+          type: [string, "null"]
+        invoiceDate:
+          type: [string, "null"]
+        dueDate:
+          type: [string, "null"]
+        totalAmount:
           type: number
-        sku:
-          type: ["string", "null"]
-        lowesUrl:
-          type: ["string", "null"]
-        homeDepotUrl:
-          type: ["string", "null"]
+        amountPaid:
+          type: number
+        balanceDue:
+          type: number
+        status:
+          type: string
+        notes:
+          type: [string, "null"]
         createdAt:
           type: string
-      required: [id, name, category, unit, basePrice, createdAt]
 
-    MaterialInput:
+    InvoiceDetail:
+      allOf:
+        - $ref: "#/components/schemas/Invoice"
+        - type: object
+          required: [payments]
+          properties:
+            payments:
+              type: array
+              items:
+                $ref: "#/components/schemas/Payment"
+
+    InvoiceInput:
       type: object
       properties:
-        name:
-          type: string
-          minLength: 1
-        description:
-          type: string
-        category:
-          type: string
-        unit:
-          type: string
-        basePrice:
-          type: number
-        sku:
-          type: string
-        lowesUrl:
-          type: string
-        homeDepotUrl:
-          type: string
-      required: [name, category, unit, basePrice]
+        jobId:
+          type: [integer, "null"]
+        clientId:
+          type: [integer, "null"]
+        estimateId:
+          type: [integer, "null"]
+        invoiceNumber:
+          type: [string, "null"]
+        invoiceDate:
+          type: [string, "null"]
+        dueDate:
+          type: [string, "null"]
+        totalAmount:
+          type: [number, string]
+        notes:
+          type: [string, "null"]
 
-    MaterialUpdate:
+    InvoiceUpdate:
       type: object
       properties:
-        name:
+        jobId:
+          type: [integer, "null"]
+        clientId:
+          type: [integer, "null"]
+        invoiceNumber:
+          type: [string, "null"]
+        invoiceDate:
+          type: [string, "null"]
+        dueDate:
+          type: [string, "null"]
+        totalAmount:
+          type: [number, string]
+        status:
           type: string
-        description:
-          type: string
-        category:
-          type: string
-        unit:
-          type: string
-        basePrice:
-          type: number
-        sku:
-          type: string
-        lowesUrl:
-          type: string
-        homeDepotUrl:
-          type: string
+        notes:
+          type: [string, "null"]
 
-    SupplierPrice:
+    Payment:
       type: object
+      required: [id, invoiceId, amount, method, createdAt]
       properties:
         id:
           type: integer
-        materialId:
+        invoiceId:
           type: integer
-        supplierName:
-          type: string
-        price:
+        amount:
           type: number
-        unit:
+        date:
+          type: [string, "null"]
+        method:
           type: string
-        url:
-          type: ["string", "null"]
-        zipCode:
-          type: ["string", "null"]
-        inStock:
-          type: boolean
-        updatedAt:
+        notes:
+          type: [string, "null"]
+        createdAt:
           type: string
-      required: [id, materialId, supplierName, price, unit, inStock, updatedAt]
 
-    SupplierPriceInput:
+    PaymentInput:
       type: object
+      required: [amount]
       properties:
-        supplierName:
+        amount:
+          type: [number, string]
+        date:
+          type: [string, "null"]
+        method:
           type: string
-          minLength: 1
-        price:
-          type: number
-        unit:
-          type: string
-        url:
-          type: string
-        zipCode:
-          type: string
-        inStock:
-          type: boolean
-      required: [supplierName, price, unit]
+        notes:
+          type: [string, "null"]
 
-    # ── JOB PHOTOS ──
     JobPhoto:
       type: object
+      required: [id, jobId, type, imageUrl, createdAt]
       properties:
         id:
           type: integer
@@ -1489,181 +2016,186 @@ components:
           type: integer
         type:
           type: string
-          enum: [before, after, progress, other]
         imageUrl:
           type: string
         caption:
-          type: ["string", "null"]
+          type: [string, "null"]
         takenAt:
-          type: ["string", "null"]
+          type: [string, "null"]
         createdAt:
           type: string
-      required: [id, jobId, type, imageUrl, createdAt]
 
     JobPhotoInput:
       type: object
+      required: [imageUrl]
       properties:
         type:
           type: string
-          enum: [before, after, progress, other]
         imageUrl:
           type: string
-          minLength: 1
         caption:
-          type: string
+          type: [string, "null"]
         takenAt:
-          type: string
-      required: [type, imageUrl]
+          type: [string, "null"]
 
     JobPhotoUpdate:
       type: object
       properties:
         type:
           type: string
-          enum: [before, after, progress, other]
         caption:
-          type: string
+          type: [string, "null"]
         takenAt:
-          type: string
+          type: [string, "null"]
 
-    # ── RECEIPTS ──
     Receipt:
       type: object
+      required: [id, vendor, amount, category, createdAt]
       properties:
         id:
           type: integer
         jobId:
-          type: ["integer", "null"]
+          type: [integer, "null"]
         jobTitle:
-          type: ["string", "null"]
+          type: [string, "null"]
         vendor:
           type: string
         amount:
           type: number
         date:
-          type: string
+          type: [string, "null"]
         category:
           type: string
-          enum: [materials, labor, equipment, fuel, permits, other]
         description:
-          type: ["string", "null"]
+          type: [string, "null"]
         imageUrl:
-          type: ["string", "null"]
+          type: [string, "null"]
         createdAt:
           type: string
-      required: [id, vendor, amount, date, category, createdAt]
 
     ReceiptInput:
       type: object
+      required: [vendor]
       properties:
         jobId:
-          type: integer
+          type: [integer, "null"]
         vendor:
           type: string
-          minLength: 1
         amount:
-          type: number
+          type: [number, string]
         date:
-          type: string
+          type: [string, "null"]
         category:
           type: string
-          enum: [materials, labor, equipment, fuel, permits, other]
         description:
-          type: string
+          type: [string, "null"]
         imageUrl:
-          type: string
-      required: [vendor, amount, date, category]
+          type: [string, "null"]
 
     ReceiptUpdate:
       type: object
       properties:
         jobId:
-          type: integer
+          type: [integer, "null"]
         vendor:
           type: string
         amount:
-          type: number
+          type: [number, string]
         date:
-          type: string
+          type: [string, "null"]
         category:
           type: string
-          enum: [materials, labor, equipment, fuel, permits, other]
         description:
-          type: string
+          type: [string, "null"]
         imageUrl:
-          type: string
+          type: [string, "null"]
 
-    # ── CALENDAR EVENTS ──
     CalendarEvent:
       type: object
+      required: [id, title, type, startDatetime, allDay, createdAt]
       properties:
         id:
           type: integer
         jobId:
-          type: ["integer", "null"]
-        jobTitle:
-          type: ["string", "null"]
+          type: [integer, "null"]
         clientId:
-          type: ["integer", "null"]
+          type: [integer, "null"]
+        jobTitle:
+          type: [string, "null"]
         clientName:
-          type: ["string", "null"]
+          type: [string, "null"]
         title:
           type: string
         type:
           type: string
-          enum: [estimate_visit, job_start, job_work, job_end, follow_up, meeting, other]
         startDatetime:
           type: string
         endDatetime:
-          type: string
+          type: [string, "null"]
         allDay:
           type: boolean
         notes:
-          type: ["string", "null"]
+          type: [string, "null"]
         createdAt:
           type: string
-      required: [id, title, type, startDatetime, endDatetime, allDay, createdAt]
 
     CalendarEventInput:
       type: object
+      required: [title, startDatetime]
       properties:
         jobId:
-          type: integer
+          type: [integer, "null"]
         clientId:
-          type: integer
+          type: [integer, "null"]
         title:
           type: string
-          minLength: 1
         type:
           type: string
-          enum: [estimate_visit, job_start, job_work, job_end, follow_up, meeting, other]
         startDatetime:
           type: string
         endDatetime:
-          type: string
+          type: [string, "null"]
         allDay:
           type: boolean
         notes:
-          type: string
-      required: [title, type, startDatetime, endDatetime]
+          type: [string, "null"]
 
     CalendarEventUpdate:
       type: object
       properties:
         jobId:
-          type: integer
+          type: [integer, "null"]
         clientId:
-          type: integer
+          type: [integer, "null"]
         title:
           type: string
         type:
           type: string
-          enum: [estimate_visit, job_start, job_work, job_end, follow_up, meeting, other]
         startDatetime:
           type: string
         endDatetime:
-          type: string
+          type: [string, "null"]
         allDay:
           type: boolean
         notes:
+          type: [string, "null"]
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
           type: string

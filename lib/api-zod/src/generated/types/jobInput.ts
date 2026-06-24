@@ -5,20 +5,33 @@
  * BuildPro Construction Business Manager API
  * OpenAPI spec version: 0.1.0
  */
-import type { JobInputStatus } from './jobInputStatus';
 
 export interface JobInput {
-  /** @minLength 1 */
   title: string;
-  clientId?: number;
-  status?: JobInputStatus;
-  description?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  startDate?: string;
-  endDate?: string;
-  estimatedValue?: number;
-  notes?: string;
+  /** @nullable */
+  clientId?: number | null;
+  status?: string;
+  /** @nullable */
+  jobType?: string | null;
+  priority?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  zipCode?: string | null;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  /** @nullable */
+  estimatedValue?: number | string | null;
+  /** @nullable */
+  actualCost?: number | string | null;
+  /** @nullable */
+  notes?: string | null;
 }

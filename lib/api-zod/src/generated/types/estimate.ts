@@ -5,29 +5,25 @@
  * BuildPro Construction Business Manager API
  * OpenAPI spec version: 0.1.0
  */
-import type { EstimateStatus } from './estimateStatus';
 
 export interface Estimate {
   id: number;
   /** @nullable */
   jobId?: number | null;
   /** @nullable */
-  jobTitle?: string | null;
-  /** @nullable */
   clientId?: number | null;
   /** @nullable */
   clientName?: string | null;
+  /** @nullable */
+  jobTitle?: string | null;
+  /** @nullable */
+  estimateNumber?: string | null;
   title: string;
-  status: EstimateStatus;
-  subtotal: number;
-  taxRate: number;
-  taxAmount: number;
-  total: number;
+  status: string;
   /** @nullable */
-  notes?: string | null;
-  /** @nullable */
-  sentAt?: string | null;
+  estimateDate?: string | null;
   /** @nullable */
   validUntil?: string | null;
+  total: number;
   createdAt: string;
 }

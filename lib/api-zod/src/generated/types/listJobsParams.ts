@@ -9,4 +9,5 @@
 export type ListJobsParams = {
 status?: string;
 clientId?: number;
+search?: string;
 };

@@ -7,6 +7,6 @@
  */
 
 export type ListEstimatesParams = {
-jobId?: number;
 status?: string;
+jobId?: number;
 };

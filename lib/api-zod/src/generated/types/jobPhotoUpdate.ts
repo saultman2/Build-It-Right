@@ -5,10 +5,11 @@
  * BuildPro Construction Business Manager API
  * OpenAPI spec version: 0.1.0
  */
-import type { JobPhotoUpdateType } from './jobPhotoUpdateType';
 
 export interface JobPhotoUpdate {
-  type?: JobPhotoUpdateType;
-  caption?: string;
-  takenAt?: string;
+  type?: string;
+  /** @nullable */
+  caption?: string | null;
+  /** @nullable */
+  takenAt?: string | null;
 }

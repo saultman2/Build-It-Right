@@ -5,14 +5,49 @@
  * BuildPro Construction Business Manager API
  * OpenAPI spec version: 0.1.0
  */
-import type { EstimateUpdateStatus } from './estimateUpdateStatus';
 
 export interface EstimateUpdate {
-  jobId?: number;
-  clientId?: number;
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  clientId?: number | null;
+  /** @nullable */
+  estimateNumber?: string | null;
   title?: string;
-  status?: EstimateUpdateStatus;
-  taxRate?: number;
-  notes?: string;
-  validUntil?: string;
+  status?: string;
+  /** @nullable */
+  estimateDate?: string | null;
+  /** @nullable */
+  validUntil?: string | null;
+  /** @nullable */
+  scopeOfWork?: string | null;
+  includeMaterials?: boolean;
+  includeLabor?: boolean;
+  includeEquipment?: boolean;
+  includePermits?: boolean;
+  includeDisposal?: boolean;
+  includeDelivery?: boolean;
+  includeSubcontractor?: boolean;
+  includeOverhead?: boolean;
+  includeProfit?: boolean;
+  includeTax?: boolean;
+  includeDiscount?: boolean;
+  includeDeposit?: boolean;
+  laborMethod?: string;
+  laborFlatCost?: number | string;
+  permitsAmount?: number | string;
+  disposalAmount?: number | string;
+  deliveryAmount?: number | string;
+  subcontractorAmount?: number | string;
+  overheadAmount?: number | string;
+  taxRate?: number | string;
+  markupPct?: number | string;
+  discountAmount?: number | string;
+  depositRequired?: number | string;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  terms?: string | null;
+  /** @nullable */
+  warrantyNote?: string | null;
 }

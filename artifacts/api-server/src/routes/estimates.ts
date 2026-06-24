@@ -1,61 +1,143 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
-import { db, estimatesTable, estimateItemsTable, jobsTable, clientsTable } from "@workspace/db";
+import { eq, and, asc, desc } from "drizzle-orm";
+import {
+  db,
+  estimatesTable,
+  estimateItemsTable,
+  clientsTable,
+  jobsTable,
+  materialListsTable,
+  materialItemsTable,
+  invoicesTable,
+  type Estimate,
+} from "@workspace/db";
 import {
   ListEstimatesQueryParams,
-  GetEstimateParams,
   CreateEstimateBody,
+  GetEstimateParams,
   UpdateEstimateParams,
   UpdateEstimateBody,
   DeleteEstimateParams,
   SendEstimateParams,
   SendEstimateBody,
-  ListEstimateItemsParams,
+  ApproveEstimateParams,
+  ConvertEstimateToInvoiceParams,
   CreateEstimateItemParams,
   CreateEstimateItemBody,
   UpdateEstimateItemParams,
   UpdateEstimateItemBody,
   DeleteEstimateItemParams,
 } from "@workspace/api-zod";
+import { requireAuth } from "../lib/auth";
+import {
+  serializeEstimate,
+  serializeEstimateItem,
+  serializeInvoice,
+  n,
+  toNumStr,
+} from "../lib/serialize";
 
 const router: IRouter = Router();
 
-function formatEstimate(e: typeof estimatesTable.$inferSelect, jobTitle?: string | null, clientName?: string | null) {
-  return {
-    ...e,
-    jobTitle: jobTitle ?? null,
-    clientName: clientName ?? null,
-    subtotal: parseFloat(e.subtotal ?? "0"),
-    taxRate: parseFloat(e.taxRate ?? "0"),
-    taxAmount: parseFloat(e.taxAmount ?? "0"),
-    total: parseFloat(e.total ?? "0"),
-    sentAt: e.sentAt ? e.sentAt.toISOString() : null,
-    createdAt: e.createdAt.toISOString(),
-  };
-}
+router.use(requireAuth);
 
-function formatItem(item: typeof estimateItemsTable.$inferSelect) {
-  return {
-    ...item,
-    quantity: parseFloat(item.quantity ?? "1"),
-    unitPrice: parseFloat(item.unitPrice ?? "0"),
-    totalPrice: parseFloat(item.totalPrice ?? "0"),
-  };
-}
+async function recalc(companyId: number, estimateId: number): Promise<Estimate> {
+  const [est] = await db
+    .select()
+    .from(estimatesTable)
+    .where(
+      and(
+        eq(estimatesTable.id, estimateId),
+        eq(estimatesTable.companyId, companyId),
+      ),
+    );
+  const items = await db
+    .select()
+    .from(estimateItemsTable)
+    .where(eq(estimateItemsTable.estimateId, estimateId));
 
-async function recalcEstimate(estimateId: number, taxRate: number) {
-  const items = await db.select().from(estimateItemsTable).where(eq(estimateItemsTable.estimateId, estimateId));
-  const subtotal = items.reduce((s, i) => s + parseFloat(i.totalPrice ?? "0"), 0);
-  const taxAmount = (subtotal * taxRate) / 100;
-  const total = subtotal + taxAmount;
-  await db
+  const sectionSum = (section: string) =>
+    items
+      .filter((i) => i.section === section)
+      .reduce((s, i) => s + n(i.lineTotal), 0);
+
+  const materialSubtotal = est.includeMaterials ? sectionSum("material") : 0;
+  let laborSubtotal = 0;
+  if (est.includeLabor) {
+    laborSubtotal =
+      est.laborMethod === "flat" ? n(est.laborFlatCost) : sectionSum("labor");
+  }
+  const equipmentSubtotal = est.includeEquipment ? sectionSum("equipment") : 0;
+  const otherItems = sectionSum("other");
+
+  const permits = est.includePermits ? n(est.permitsAmount) : 0;
+  const disposal = est.includeDisposal ? n(est.disposalAmount) : 0;
+  const delivery = est.includeDelivery ? n(est.deliveryAmount) : 0;
+  const subcontractor = est.includeSubcontractor
+    ? n(est.subcontractorAmount)
+    : 0;
+  const overhead = est.includeOverhead ? n(est.overheadAmount) : 0;
+  const otherChargesSubtotal =
+    permits + disposal + delivery + subcontractor + otherItems;
+
+  const base =
+    materialSubtotal +
+    laborSubtotal +
+    equipmentSubtotal +
+    otherChargesSubtotal +
+    overhead;
+
+  const markupAmount = est.includeProfit ? (base * n(est.markupPct)) / 100 : 0;
+  const discountAmount = est.includeDiscount ? n(est.discountAmount) : 0;
+  const preTax = base + markupAmount - discountAmount;
+  const taxAmount = est.includeTax ? (preTax * n(est.taxRate)) / 100 : 0;
+  const total = preTax + taxAmount;
+
+  const [updated] = await db
     .update(estimatesTable)
     .set({
-      subtotal: subtotal.toFixed(2),
-      taxAmount: taxAmount.toFixed(2),
-      total: total.toFixed(2),
+      materialSubtotal: String(materialSubtotal),
+      laborSubtotal: String(laborSubtotal),
+      equipmentSubtotal: String(equipmentSubtotal),
+      otherChargesSubtotal: String(otherChargesSubtotal),
+      markupAmount: String(markupAmount),
+      taxAmount: String(taxAmount),
+      total: String(total),
     })
-    .where(eq(estimatesTable.id, estimateId));
+    .where(eq(estimatesTable.id, estimateId))
+    .returning();
+  return updated;
+}
+
+async function detail(companyId: number, estimateId: number) {
+  const [row] = await db
+    .select({
+      est: estimatesTable,
+      clientName: clientsTable.name,
+      jobTitle: jobsTable.title,
+    })
+    .from(estimatesTable)
+    .leftJoin(clientsTable, eq(estimatesTable.clientId, clientsTable.id))
+    .leftJoin(jobsTable, eq(estimatesTable.jobId, jobsTable.id))
+    .where(
+      and(
+        eq(estimatesTable.id, estimateId),
+        eq(estimatesTable.companyId, companyId),
+      ),
+    );
+  if (!row) return null;
+  const items = await db
+    .select()
+    .from(estimateItemsTable)
+    .where(eq(estimateItemsTable.estimateId, estimateId))
+    .orderBy(asc(estimateItemsTable.sortOrder), asc(estimateItemsTable.id));
+  return {
+    ...serializeEstimate(row.est, {
+      clientName: row.clientName,
+      jobTitle: row.jobTitle,
+    }),
+    items: items.map(serializeEstimateItem),
+  };
 }
 
 router.get("/estimates", async (req, res): Promise<void> => {
@@ -64,20 +146,29 @@ router.get("/estimates", async (req, res): Promise<void> => {
     res.status(400).json({ error: query.error.message });
     return;
   }
-
-  const conditions = [];
-  if (query.data.jobId) conditions.push(eq(estimatesTable.jobId, Number(query.data.jobId)));
-  if (query.data.status) conditions.push(eq(estimatesTable.status, query.data.status));
-
+  const conds = [eq(estimatesTable.companyId, req.companyId!)];
+  if (query.data.status)
+    conds.push(eq(estimatesTable.status, query.data.status));
+  if (query.data.jobId) conds.push(eq(estimatesTable.jobId, query.data.jobId));
   const rows = await db
-    .select({ estimate: estimatesTable, jobTitle: jobsTable.title, clientName: clientsTable.name })
+    .select({
+      est: estimatesTable,
+      clientName: clientsTable.name,
+      jobTitle: jobsTable.title,
+    })
     .from(estimatesTable)
-    .leftJoin(jobsTable, eq(estimatesTable.jobId, jobsTable.id))
     .leftJoin(clientsTable, eq(estimatesTable.clientId, clientsTable.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(estimatesTable.createdAt);
-
-  res.json(rows.map(({ estimate, jobTitle, clientName }) => formatEstimate(estimate, jobTitle, clientName)));
+    .leftJoin(jobsTable, eq(estimatesTable.jobId, jobsTable.id))
+    .where(and(...conds))
+    .orderBy(desc(estimatesTable.createdAt));
+  res.json(
+    rows.map((r) =>
+      serializeEstimate(r.est, {
+        clientName: r.clientName,
+        jobTitle: r.jobTitle,
+      }),
+    ),
+  );
 });
 
 router.post("/estimates", async (req, res): Promise<void> => {
@@ -86,11 +177,53 @@ router.post("/estimates", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [estimate] = await db.insert(estimatesTable).values({
-    ...parsed.data,
-    taxRate: parsed.data.taxRate?.toString() ?? "0",
-  }).returning();
-  res.status(201).json(formatEstimate(estimate));
+  const d = parsed.data;
+  const [est] = await db
+    .insert(estimatesTable)
+    .values({
+      companyId: req.companyId!,
+      jobId: d.jobId ?? null,
+      clientId: d.clientId ?? null,
+      title: d.title,
+    })
+    .returning();
+
+  if (d.importMaterialList && d.jobId) {
+    const [list] = await db
+      .select()
+      .from(materialListsTable)
+      .where(
+        and(
+          eq(materialListsTable.jobId, d.jobId),
+          eq(materialListsTable.companyId, req.companyId!),
+        ),
+      );
+    if (list) {
+      const items = await db
+        .select()
+        .from(materialItemsTable)
+        .where(eq(materialItemsTable.materialListId, list.id))
+        .orderBy(asc(materialItemsTable.sortOrder));
+      if (items.length > 0) {
+        await db.insert(estimateItemsTable).values(
+          items.map((m, idx) => ({
+            companyId: req.companyId!,
+            estimateId: est.id,
+            section: "material",
+            description: m.name,
+            quantity: m.quantity,
+            unit: m.unit,
+            unitPrice: m.unitPrice,
+            lineTotal: m.lineTotal,
+            sortOrder: idx,
+          })),
+        );
+      }
+    }
+  }
+
+  await recalc(req.companyId!, est.id);
+  res.status(201).json(await detail(req.companyId!, est.id));
 });
 
 router.get("/estimates/:id", async (req, res): Promise<void> => {
@@ -99,17 +232,12 @@ router.get("/estimates/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db
-    .select({ estimate: estimatesTable, jobTitle: jobsTable.title, clientName: clientsTable.name })
-    .from(estimatesTable)
-    .leftJoin(jobsTable, eq(estimatesTable.jobId, jobsTable.id))
-    .leftJoin(clientsTable, eq(estimatesTable.clientId, clientsTable.id))
-    .where(eq(estimatesTable.id, params.data.id));
-  if (!row) {
+  const d = await detail(req.companyId!, params.data.id);
+  if (!d) {
     res.status(404).json({ error: "Estimate not found" });
     return;
   }
-  res.json(formatEstimate(row.estimate, row.jobTitle, row.clientName));
+  res.json(d);
 });
 
 router.patch("/estimates/:id", async (req, res): Promise<void> => {
@@ -123,21 +251,61 @@ router.patch("/estimates/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const updateData: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.taxRate !== undefined) {
-    updateData.taxRate = parsed.data.taxRate.toString();
-    await recalcEstimate(params.data.id, parsed.data.taxRate);
-  }
-  const [estimate] = await db
-    .update(estimatesTable)
-    .set(updateData)
-    .where(eq(estimatesTable.id, params.data.id))
-    .returning();
-  if (!estimate) {
+  const d = parsed.data;
+  const [existing] = await db
+    .select({ id: estimatesTable.id })
+    .from(estimatesTable)
+    .where(
+      and(
+        eq(estimatesTable.id, params.data.id),
+        eq(estimatesTable.companyId, req.companyId!),
+      ),
+    );
+  if (!existing) {
     res.status(404).json({ error: "Estimate not found" });
     return;
   }
-  res.json(formatEstimate(estimate));
+  await db
+    .update(estimatesTable)
+    .set({
+      jobId: d.jobId,
+      clientId: d.clientId,
+      estimateNumber: d.estimateNumber,
+      title: d.title,
+      status: d.status,
+      estimateDate: d.estimateDate,
+      validUntil: d.validUntil,
+      scopeOfWork: d.scopeOfWork,
+      includeMaterials: d.includeMaterials,
+      includeLabor: d.includeLabor,
+      includeEquipment: d.includeEquipment,
+      includePermits: d.includePermits,
+      includeDisposal: d.includeDisposal,
+      includeDelivery: d.includeDelivery,
+      includeSubcontractor: d.includeSubcontractor,
+      includeOverhead: d.includeOverhead,
+      includeProfit: d.includeProfit,
+      includeTax: d.includeTax,
+      includeDiscount: d.includeDiscount,
+      includeDeposit: d.includeDeposit,
+      laborMethod: d.laborMethod,
+      laborFlatCost: toNumStr(d.laborFlatCost),
+      permitsAmount: toNumStr(d.permitsAmount),
+      disposalAmount: toNumStr(d.disposalAmount),
+      deliveryAmount: toNumStr(d.deliveryAmount),
+      subcontractorAmount: toNumStr(d.subcontractorAmount),
+      overheadAmount: toNumStr(d.overheadAmount),
+      taxRate: toNumStr(d.taxRate),
+      markupPct: toNumStr(d.markupPct),
+      discountAmount: toNumStr(d.discountAmount),
+      depositRequired: toNumStr(d.depositRequired),
+      notes: d.notes,
+      terms: d.terms,
+      warrantyNote: d.warrantyNote,
+    })
+    .where(eq(estimatesTable.id, params.data.id));
+  await recalc(req.companyId!, params.data.id);
+  res.json(await detail(req.companyId!, params.data.id));
 });
 
 router.delete("/estimates/:id", async (req, res): Promise<void> => {
@@ -146,9 +314,16 @@ router.delete("/estimates/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  await db.delete(estimateItemsTable).where(eq(estimateItemsTable.estimateId, params.data.id));
-  const [estimate] = await db.delete(estimatesTable).where(eq(estimatesTable.id, params.data.id)).returning();
-  if (!estimate) {
+  const [est] = await db
+    .delete(estimatesTable)
+    .where(
+      and(
+        eq(estimatesTable.id, params.data.id),
+        eq(estimatesTable.companyId, req.companyId!),
+      ),
+    )
+    .returning();
+  if (!est) {
     res.status(404).json({ error: "Estimate not found" });
     return;
   }
@@ -166,67 +341,177 @@ router.post("/estimates/:id/send", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [estimate] = await db
+  const [est] = await db
     .update(estimatesTable)
     .set({ status: "sent", sentAt: new Date() })
-    .where(eq(estimatesTable.id, params.data.id))
+    .where(
+      and(
+        eq(estimatesTable.id, params.data.id),
+        eq(estimatesTable.companyId, req.companyId!),
+      ),
+    )
     .returning();
-  if (!estimate) {
+  if (!est) {
     res.status(404).json({ error: "Estimate not found" });
     return;
   }
-  res.json(formatEstimate(estimate));
+  if (est.jobId) {
+    await db
+      .update(jobsTable)
+      .set({ status: "estimate_sent" })
+      .where(
+        and(
+          eq(jobsTable.id, est.jobId),
+          eq(jobsTable.companyId, req.companyId!),
+        ),
+      );
+  }
+  const channel = parsed.data.channel;
+  res.json({
+    sent: false,
+    marked: true,
+    warning: `${channel === "email" ? "Email" : "SMS"} delivery is not configured yet. The estimate was marked as sent — connect a provider to send it automatically.`,
+  });
 });
 
-// ── ESTIMATE ITEMS ──
-
-router.get("/estimates/:estimateId/items", async (req, res): Promise<void> => {
-  const params = ListEstimateItemsParams.safeParse(req.params);
+router.post("/estimates/:id/approve", async (req, res): Promise<void> => {
+  const params = ApproveEstimateParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const items = await db
-    .select()
-    .from(estimateItemsTable)
-    .where(eq(estimateItemsTable.estimateId, params.data.estimateId))
-    .orderBy(estimateItemsTable.sortOrder);
-  res.json(items.map(formatItem));
-});
-
-router.post("/estimates/:estimateId/items", async (req, res): Promise<void> => {
-  const params = CreateEstimateItemParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const parsed = CreateEstimateItemBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const totalPrice = (parsed.data.quantity ?? 1) * (parsed.data.unitPrice ?? 0);
-  const [item] = await db
-    .insert(estimateItemsTable)
-    .values({
-      ...parsed.data,
-      estimateId: params.data.estimateId,
-      quantity: parsed.data.quantity?.toString() ?? "1",
-      unitPrice: parsed.data.unitPrice?.toString() ?? "0",
-      totalPrice: totalPrice.toFixed(2),
-    })
+  const [est] = await db
+    .update(estimatesTable)
+    .set({ status: "approved", approvedAt: new Date() })
+    .where(
+      and(
+        eq(estimatesTable.id, params.data.id),
+        eq(estimatesTable.companyId, req.companyId!),
+      ),
+    )
     .returning();
-
-  // Recalc estimate totals
-  const [estimate] = await db.select().from(estimatesTable).where(eq(estimatesTable.id, params.data.estimateId));
-  if (estimate) {
-    await recalcEstimate(params.data.estimateId, parseFloat(estimate.taxRate ?? "0"));
+  if (!est) {
+    res.status(404).json({ error: "Estimate not found" });
+    return;
   }
-
-  res.status(201).json(formatItem(item));
+  if (est.jobId) {
+    await db
+      .update(jobsTable)
+      .set({ status: "approved" })
+      .where(
+        and(
+          eq(jobsTable.id, est.jobId),
+          eq(jobsTable.companyId, req.companyId!),
+        ),
+      );
+  }
+  res.json(await detail(req.companyId!, params.data.id));
 });
 
-router.patch("/estimates/:estimateId/items/:itemId", async (req, res): Promise<void> => {
+router.post(
+  "/estimates/:id/convert-to-invoice",
+  async (req, res): Promise<void> => {
+    const params = ConvertEstimateToInvoiceParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const [est] = await db
+      .select()
+      .from(estimatesTable)
+      .where(
+        and(
+          eq(estimatesTable.id, params.data.id),
+          eq(estimatesTable.companyId, req.companyId!),
+        ),
+      );
+    if (!est) {
+      res.status(404).json({ error: "Estimate not found" });
+      return;
+    }
+    const total = n(est.total);
+    const [invoice] = await db
+      .insert(invoicesTable)
+      .values({
+        companyId: req.companyId!,
+        jobId: est.jobId,
+        clientId: est.clientId,
+        estimateId: est.id,
+        totalAmount: String(total),
+        balanceDue: String(total),
+        status: "unpaid",
+      })
+      .returning();
+    if (est.jobId) {
+      await db
+        .update(jobsTable)
+        .set({ status: "invoiced" })
+        .where(
+          and(
+            eq(jobsTable.id, est.jobId),
+            eq(jobsTable.companyId, req.companyId!),
+          ),
+        );
+    }
+    res.status(201).json(serializeInvoice(invoice));
+  },
+);
+
+router.post(
+  "/estimates/:estimateId/items",
+  async (req, res): Promise<void> => {
+    const params = CreateEstimateItemParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const parsed = CreateEstimateItemBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const [est] = await db
+      .select({ id: estimatesTable.id })
+      .from(estimatesTable)
+      .where(
+        and(
+          eq(estimatesTable.id, params.data.estimateId),
+          eq(estimatesTable.companyId, req.companyId!),
+        ),
+      );
+    if (!est) {
+      res.status(404).json({ error: "Estimate not found" });
+      return;
+    }
+    const d = parsed.data;
+    const section = d.section ?? "material";
+    const qty = n(d.quantity ?? 0);
+    const price = n(d.unitPrice ?? 0);
+    const hours = n(d.hours ?? 0);
+    const rate = n(d.hourlyRate ?? 0);
+    const lineTotal = section === "labor" ? hours * rate : qty * price;
+    const [item] = await db
+      .insert(estimateItemsTable)
+      .values({
+        companyId: req.companyId!,
+        estimateId: params.data.estimateId,
+        section,
+        description: d.description,
+        quantity: toNumStr(d.quantity),
+        unit: d.unit,
+        unitPrice: toNumStr(d.unitPrice),
+        hours: toNumStr(d.hours),
+        hourlyRate: toNumStr(d.hourlyRate),
+        lineTotal: String(lineTotal),
+        sortOrder: d.sortOrder,
+      })
+      .returning();
+    await recalc(req.companyId!, params.data.estimateId);
+    res.status(201).json(serializeEstimateItem(item));
+  },
+);
+
+router.patch("/estimate-items/:id", async (req, res): Promise<void> => {
   const params = UpdateEstimateItemParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -237,38 +522,48 @@ router.patch("/estimates/:estimateId/items/:itemId", async (req, res): Promise<v
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-
-  // Get existing item to recalc
-  const [existing] = await db.select().from(estimateItemsTable).where(eq(estimateItemsTable.id, params.data.itemId));
+  const [existing] = await db
+    .select()
+    .from(estimateItemsTable)
+    .where(
+      and(
+        eq(estimateItemsTable.id, params.data.id),
+        eq(estimateItemsTable.companyId, req.companyId!),
+      ),
+    );
   if (!existing) {
-    res.status(404).json({ error: "Item not found" });
+    res.status(404).json({ error: "Estimate item not found" });
     return;
   }
-
-  const qty = parsed.data.quantity ?? parseFloat(existing.quantity ?? "1");
-  const price = parsed.data.unitPrice ?? parseFloat(existing.unitPrice ?? "0");
-  const totalPrice = qty * price;
-
-  const updateData: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.quantity !== undefined) updateData.quantity = parsed.data.quantity.toString();
-  if (parsed.data.unitPrice !== undefined) updateData.unitPrice = parsed.data.unitPrice.toString();
-  updateData.totalPrice = totalPrice.toFixed(2);
-
+  const d = parsed.data;
+  const section = d.section ?? existing.section;
+  const qty = d.quantity !== undefined ? n(d.quantity) : n(existing.quantity);
+  const price =
+    d.unitPrice !== undefined ? n(d.unitPrice) : n(existing.unitPrice);
+  const hours = d.hours !== undefined ? n(d.hours) : n(existing.hours);
+  const rate =
+    d.hourlyRate !== undefined ? n(d.hourlyRate) : n(existing.hourlyRate);
+  const lineTotal = section === "labor" ? hours * rate : qty * price;
   const [item] = await db
     .update(estimateItemsTable)
-    .set(updateData)
-    .where(eq(estimateItemsTable.id, params.data.itemId))
+    .set({
+      section: d.section,
+      description: d.description,
+      quantity: toNumStr(d.quantity),
+      unit: d.unit,
+      unitPrice: toNumStr(d.unitPrice),
+      hours: toNumStr(d.hours),
+      hourlyRate: toNumStr(d.hourlyRate),
+      lineTotal: String(lineTotal),
+      sortOrder: d.sortOrder,
+    })
+    .where(eq(estimateItemsTable.id, params.data.id))
     .returning();
-
-  const [estimate] = await db.select().from(estimatesTable).where(eq(estimatesTable.id, existing.estimateId));
-  if (estimate) {
-    await recalcEstimate(existing.estimateId, parseFloat(estimate.taxRate ?? "0"));
-  }
-
-  res.json(formatItem(item));
+  await recalc(req.companyId!, existing.estimateId);
+  res.json(serializeEstimateItem(item));
 });
 
-router.delete("/estimates/:estimateId/items/:itemId", async (req, res): Promise<void> => {
+router.delete("/estimate-items/:id", async (req, res): Promise<void> => {
   const params = DeleteEstimateItemParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -276,18 +571,18 @@ router.delete("/estimates/:estimateId/items/:itemId", async (req, res): Promise<
   }
   const [item] = await db
     .delete(estimateItemsTable)
-    .where(eq(estimateItemsTable.id, params.data.itemId))
+    .where(
+      and(
+        eq(estimateItemsTable.id, params.data.id),
+        eq(estimateItemsTable.companyId, req.companyId!),
+      ),
+    )
     .returning();
   if (!item) {
-    res.status(404).json({ error: "Item not found" });
+    res.status(404).json({ error: "Estimate item not found" });
     return;
   }
-
-  const [estimate] = await db.select().from(estimatesTable).where(eq(estimatesTable.id, params.data.estimateId));
-  if (estimate) {
-    await recalcEstimate(params.data.estimateId, parseFloat(estimate.taxRate ?? "0"));
-  }
-
+  await recalc(req.companyId!, item.estimateId);
   res.sendStatus(204);
 });
 

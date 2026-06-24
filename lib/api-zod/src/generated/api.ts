@@ -20,18 +20,24 @@ export const HealthCheckResponse = zod.object({
  * @summary Dashboard KPI summary
  */
 export const GetDashboardSummaryResponse = zod.object({
-  "activeJobsCount": zod.number(),
-  "pendingEstimatesCount": zod.number(),
-  "pendingEstimatesTotal": zod.number(),
-  "thisMonthRevenue": zod.number(),
-  "totalClientsCount": zod.number(),
-  "upcomingEventsCount": zod.number(),
+  "activeJobs": zod.number(),
+  "jobsInProgress": zod.number(),
+  "jobsFinished": zod.number(),
+  "estimatesDrafted": zod.number(),
+  "estimatesSent": zod.number(),
+  "totalClients": zod.number(),
+  "unpaidInvoices": zod.number(),
+  "paidJobs": zod.number(),
+  "totalUnpaidAmount": zod.number(),
+  "totalPaidAmount": zod.number(),
   "recentJobs": zod.array(zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "clientId": zod.number().nullish(),
   "clientName": zod.string().nullish(),
-  "status": zod.enum(['lead', 'scheduled', 'in_progress', 'completed', 'cancelled']),
+  "status": zod.string(),
+  "jobType": zod.string().nullish(),
+  "priority": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string().nullish(),
   "city": zod.string().nullish(),
@@ -47,13 +53,13 @@ export const GetDashboardSummaryResponse = zod.object({
   "upcomingEvents": zod.array(zod.object({
   "id": zod.number(),
   "jobId": zod.number().nullish(),
-  "jobTitle": zod.string().nullish(),
   "clientId": zod.number().nullish(),
+  "jobTitle": zod.string().nullish(),
   "clientName": zod.string().nullish(),
   "title": zod.string(),
-  "type": zod.enum(['estimate_visit', 'job_start', 'job_work', 'job_end', 'follow_up', 'meeting', 'other']),
+  "type": zod.string(),
   "startDatetime": zod.string(),
-  "endDatetime": zod.string(),
+  "endDatetime": zod.string().nullish(),
   "allDay": zod.boolean(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string()
@@ -62,7 +68,78 @@ export const GetDashboardSummaryResponse = zod.object({
 
 
 /**
- * @summary List all clients
+ * @summary Get current company profile/settings
+ */
+export const GetCompanyResponse = zod.object({
+  "id": zod.number(),
+  "ownerId": zod.string(),
+  "name": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "licenseNumber": zod.string().nullish(),
+  "insuranceNote": zod.string().nullish(),
+  "defaultTaxRate": zod.number(),
+  "defaultLaborRate": zod.number(),
+  "defaultMarkupPct": zod.number(),
+  "defaultTerms": zod.string().nullish(),
+  "estimateFooter": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Update company profile/settings
+ */
+export const UpdateCompanyBody = zod.object({
+  "name": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "licenseNumber": zod.string().nullish(),
+  "insuranceNote": zod.string().nullish(),
+  "defaultTaxRate": zod.number().optional(),
+  "defaultLaborRate": zod.number().optional(),
+  "defaultMarkupPct": zod.number().optional(),
+  "defaultTerms": zod.string().nullish(),
+  "estimateFooter": zod.string().nullish()
+})
+
+export const UpdateCompanyResponse = zod.object({
+  "id": zod.number(),
+  "ownerId": zod.string(),
+  "name": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "licenseNumber": zod.string().nullish(),
+  "insuranceNote": zod.string().nullish(),
+  "defaultTaxRate": zod.number(),
+  "defaultLaborRate": zod.number(),
+  "defaultMarkupPct": zod.number(),
+  "defaultTerms": zod.string().nullish(),
+  "estimateFooter": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary List customers
  */
 export const ListClientsQueryParams = zod.object({
   "search": zod.coerce.string().optional()
@@ -84,25 +161,22 @@ export const ListClientsResponse = zod.array(ListClientsResponseItem)
 
 
 /**
- * @summary Create a new client
+ * @summary Create a customer
  */
-
-
-
 export const CreateClientBody = zod.object({
-  "name": zod.string().min(1),
-  "email": zod.string().optional(),
-  "phone": zod.string().optional(),
-  "address": zod.string().optional(),
-  "city": zod.string().optional(),
-  "state": zod.string().optional(),
-  "zipCode": zod.string().optional(),
-  "notes": zod.string().optional()
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "notes": zod.string().nullish()
 })
 
 
 /**
- * @summary Get a client by ID
+ * @summary Get a customer by ID
  */
 export const GetClientParams = zod.object({
   "id": zod.coerce.number()
@@ -123,7 +197,7 @@ export const GetClientResponse = zod.object({
 
 
 /**
- * @summary Update a client
+ * @summary Update a customer
  */
 export const UpdateClientParams = zod.object({
   "id": zod.coerce.number()
@@ -131,13 +205,13 @@ export const UpdateClientParams = zod.object({
 
 export const UpdateClientBody = zod.object({
   "name": zod.string().optional(),
-  "email": zod.string().optional(),
-  "phone": zod.string().optional(),
-  "address": zod.string().optional(),
-  "city": zod.string().optional(),
-  "state": zod.string().optional(),
-  "zipCode": zod.string().optional(),
-  "notes": zod.string().optional()
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "notes": zod.string().nullish()
 })
 
 export const UpdateClientResponse = zod.object({
@@ -155,7 +229,7 @@ export const UpdateClientResponse = zod.object({
 
 
 /**
- * @summary Delete a client
+ * @summary Delete a customer
  */
 export const DeleteClientParams = zod.object({
   "id": zod.coerce.number()
@@ -163,7 +237,7 @@ export const DeleteClientParams = zod.object({
 
 
 /**
- * @summary Get client job history and totals
+ * @summary Get customer job history and totals
  */
 export const GetClientHistoryParams = zod.object({
   "id": zod.coerce.number()
@@ -179,7 +253,9 @@ export const GetClientHistoryResponse = zod.object({
   "title": zod.string(),
   "clientId": zod.number().nullish(),
   "clientName": zod.string().nullish(),
-  "status": zod.enum(['lead', 'scheduled', 'in_progress', 'completed', 'cancelled']),
+  "status": zod.string(),
+  "jobType": zod.string().nullish(),
+  "priority": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string().nullish(),
   "city": zod.string().nullish(),
@@ -196,11 +272,12 @@ export const GetClientHistoryResponse = zod.object({
 
 
 /**
- * @summary List all jobs
+ * @summary List jobs
  */
 export const ListJobsQueryParams = zod.object({
   "status": zod.coerce.string().optional(),
-  "clientId": zod.coerce.number().optional()
+  "clientId": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional()
 })
 
 export const ListJobsResponseItem = zod.object({
@@ -208,7 +285,9 @@ export const ListJobsResponseItem = zod.object({
   "title": zod.string(),
   "clientId": zod.number().nullish(),
   "clientName": zod.string().nullish(),
-  "status": zod.enum(['lead', 'scheduled', 'in_progress', 'completed', 'cancelled']),
+  "status": zod.string(),
+  "jobType": zod.string().nullish(),
+  "priority": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string().nullish(),
   "city": zod.string().nullish(),
@@ -225,24 +304,24 @@ export const ListJobsResponse = zod.array(ListJobsResponseItem)
 
 
 /**
- * @summary Create a new job
+ * @summary Create a job
  */
-
-
-
 export const CreateJobBody = zod.object({
-  "title": zod.string().min(1),
-  "clientId": zod.number().optional(),
-  "status": zod.enum(['lead', 'scheduled', 'in_progress', 'completed', 'cancelled']).optional(),
-  "description": zod.string().optional(),
-  "address": zod.string().optional(),
-  "city": zod.string().optional(),
-  "state": zod.string().optional(),
-  "zipCode": zod.string().optional(),
-  "startDate": zod.string().optional(),
-  "endDate": zod.string().optional(),
-  "estimatedValue": zod.number().optional(),
-  "notes": zod.string().optional()
+  "title": zod.string(),
+  "clientId": zod.number().nullish(),
+  "status": zod.string().optional(),
+  "jobType": zod.string().nullish(),
+  "priority": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "estimatedValue": zod.union([zod.number(),zod.string()]).nullish(),
+  "actualCost": zod.union([zod.number(),zod.string()]).nullish(),
+  "notes": zod.string().nullish()
 })
 
 
@@ -258,7 +337,9 @@ export const GetJobResponse = zod.object({
   "title": zod.string(),
   "clientId": zod.number().nullish(),
   "clientName": zod.string().nullish(),
-  "status": zod.enum(['lead', 'scheduled', 'in_progress', 'completed', 'cancelled']),
+  "status": zod.string(),
+  "jobType": zod.string().nullish(),
+  "priority": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string().nullish(),
   "city": zod.string().nullish(),
@@ -282,18 +363,20 @@ export const UpdateJobParams = zod.object({
 
 export const UpdateJobBody = zod.object({
   "title": zod.string().optional(),
-  "clientId": zod.number().optional(),
-  "status": zod.enum(['lead', 'scheduled', 'in_progress', 'completed', 'cancelled']).optional(),
-  "description": zod.string().optional(),
-  "address": zod.string().optional(),
-  "city": zod.string().optional(),
-  "state": zod.string().optional(),
-  "zipCode": zod.string().optional(),
-  "startDate": zod.string().optional(),
-  "endDate": zod.string().optional(),
-  "estimatedValue": zod.number().optional(),
-  "actualCost": zod.number().optional(),
-  "notes": zod.string().optional()
+  "clientId": zod.number().nullish(),
+  "status": zod.string().optional(),
+  "jobType": zod.string().nullish(),
+  "priority": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "estimatedValue": zod.union([zod.number(),zod.string()]).nullish(),
+  "actualCost": zod.union([zod.number(),zod.string()]).nullish(),
+  "notes": zod.string().nullish()
 })
 
 export const UpdateJobResponse = zod.object({
@@ -301,7 +384,9 @@ export const UpdateJobResponse = zod.object({
   "title": zod.string(),
   "clientId": zod.number().nullish(),
   "clientName": zod.string().nullish(),
-  "status": zod.enum(['lead', 'scheduled', 'in_progress', 'completed', 'cancelled']),
+  "status": zod.string(),
+  "jobType": zod.string().nullish(),
+  "priority": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string().nullish(),
   "city": zod.string().nullish(),
@@ -325,71 +410,225 @@ export const DeleteJobParams = zod.object({
 
 
 /**
- * @summary Get job financial and progress summary
+ * @summary Get job with related counts/totals
  */
 export const GetJobSummaryParams = zod.object({
   "id": zod.coerce.number()
 })
 
 export const GetJobSummaryResponse = zod.object({
-  "jobId": zod.number(),
-  "estimateTotal": zod.number(),
-  "receiptTotal": zod.number(),
+  "job": zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string().nullish(),
+  "status": zod.string(),
+  "jobType": zod.string().nullish(),
+  "priority": zod.string(),
+  "description": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "estimatedValue": zod.number().nullish(),
+  "actualCost": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+}),
   "photoCount": zod.number(),
-  "beforePhotoCount": zod.number(),
-  "afterPhotoCount": zod.number(),
+  "receiptTotal": zod.number(),
   "estimateCount": zod.number(),
-  "acceptedEstimateTotal": zod.number()
+  "hasMaterialList": zod.boolean()
 })
 
 
 /**
- * @summary List all estimates
+ * @summary Get (or create) the material list for a job, with items and totals
+ */
+export const GetJobMaterialListParams = zod.object({
+  "jobId": zod.coerce.number()
+})
+
+export const GetJobMaterialListResponse = zod.object({
+  "id": zod.number(),
+  "jobId": zod.number(),
+  "name": zod.string(),
+  "notes": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "materialListId": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number(),
+  "supplier": zod.string().nullish(),
+  "sku": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "taxable": zod.boolean(),
+  "markup": zod.boolean(),
+  "notes": zod.string().nullish(),
+  "sortOrder": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxableSubtotal": zod.number(),
+  "markupSubtotal": zod.number()
+})
+
+
+/**
+ * @summary Update material list meta (name/notes)
+ */
+export const UpdateJobMaterialListParams = zod.object({
+  "jobId": zod.coerce.number()
+})
+
+export const UpdateJobMaterialListBody = zod.object({
+  "name": zod.string().optional(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateJobMaterialListResponse = zod.object({
+  "id": zod.number(),
+  "jobId": zod.number(),
+  "name": zod.string(),
+  "notes": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "materialListId": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number(),
+  "supplier": zod.string().nullish(),
+  "sku": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "taxable": zod.boolean(),
+  "markup": zod.boolean(),
+  "notes": zod.string().nullish(),
+  "sortOrder": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxableSubtotal": zod.number(),
+  "markupSubtotal": zod.number()
+})
+
+
+/**
+ * @summary Add an item to the job material list
+ */
+export const CreateMaterialItemParams = zod.object({
+  "jobId": zod.coerce.number()
+})
+
+export const CreateMaterialItemBody = zod.object({
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "quantity": zod.union([zod.number(),zod.string()]).optional(),
+  "unit": zod.string().optional(),
+  "unitPrice": zod.union([zod.number(),zod.string()]).optional(),
+  "supplier": zod.string().nullish(),
+  "sku": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "taxable": zod.boolean().optional(),
+  "markup": zod.boolean().optional(),
+  "notes": zod.string().nullish(),
+  "sortOrder": zod.number().optional()
+})
+
+
+/**
+ * @summary Update a material item
+ */
+export const UpdateMaterialItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateMaterialItemBody = zod.object({
+  "name": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "quantity": zod.union([zod.number(),zod.string()]).optional(),
+  "unit": zod.string().optional(),
+  "unitPrice": zod.union([zod.number(),zod.string()]).optional(),
+  "supplier": zod.string().nullish(),
+  "sku": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "taxable": zod.boolean().optional(),
+  "markup": zod.boolean().optional(),
+  "notes": zod.string().nullish(),
+  "sortOrder": zod.number().optional()
+})
+
+export const UpdateMaterialItemResponse = zod.object({
+  "id": zod.number(),
+  "materialListId": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number(),
+  "supplier": zod.string().nullish(),
+  "sku": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "taxable": zod.boolean(),
+  "markup": zod.boolean(),
+  "notes": zod.string().nullish(),
+  "sortOrder": zod.number()
+})
+
+
+/**
+ * @summary Delete a material item
+ */
+export const DeleteMaterialItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary List estimates
  */
 export const ListEstimatesQueryParams = zod.object({
-  "jobId": zod.coerce.number().optional(),
-  "status": zod.coerce.string().optional()
+  "status": zod.coerce.string().optional(),
+  "jobId": zod.coerce.number().optional()
 })
 
 export const ListEstimatesResponseItem = zod.object({
   "id": zod.number(),
   "jobId": zod.number().nullish(),
-  "jobTitle": zod.string().nullish(),
   "clientId": zod.number().nullish(),
   "clientName": zod.string().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "estimateNumber": zod.string().nullish(),
   "title": zod.string(),
-  "status": zod.enum(['draft', 'sent', 'accepted', 'rejected', 'revised']),
-  "subtotal": zod.number(),
-  "taxRate": zod.number(),
-  "taxAmount": zod.number(),
-  "total": zod.number(),
-  "notes": zod.string().nullish(),
-  "sentAt": zod.string().nullish(),
+  "status": zod.string(),
+  "estimateDate": zod.string().nullish(),
   "validUntil": zod.string().nullish(),
+  "total": zod.number(),
   "createdAt": zod.string()
 })
 export const ListEstimatesResponse = zod.array(ListEstimatesResponseItem)
 
 
 /**
- * @summary Create a new estimate
+ * @summary Create an estimate (optionally from a job's material list)
  */
-
-
-
 export const CreateEstimateBody = zod.object({
-  "jobId": zod.number().optional(),
-  "clientId": zod.number().optional(),
-  "title": zod.string().min(1),
-  "status": zod.enum(['draft', 'sent', 'accepted', 'rejected', 'revised']).optional(),
-  "taxRate": zod.number().optional(),
-  "notes": zod.string().optional(),
-  "validUntil": zod.string().optional()
+  "jobId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "title": zod.string(),
+  "importMaterialList": zod.boolean().optional().describe('If true and jobId set, copy material list items into the estimate.')
 })
 
 
 /**
- * @summary Get an estimate by ID
+ * @summary Get an estimate with items
  */
 export const GetEstimateParams = zod.object({
   "id": zod.coerce.number()
@@ -398,55 +637,172 @@ export const GetEstimateParams = zod.object({
 export const GetEstimateResponse = zod.object({
   "id": zod.number(),
   "jobId": zod.number().nullish(),
-  "jobTitle": zod.string().nullish(),
   "clientId": zod.number().nullish(),
   "clientName": zod.string().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "estimateNumber": zod.string().nullish(),
   "title": zod.string(),
-  "status": zod.enum(['draft', 'sent', 'accepted', 'rejected', 'revised']),
-  "subtotal": zod.number(),
-  "taxRate": zod.number(),
-  "taxAmount": zod.number(),
-  "total": zod.number(),
-  "notes": zod.string().nullish(),
-  "sentAt": zod.string().nullish(),
+  "status": zod.string(),
+  "estimateDate": zod.string().nullish(),
   "validUntil": zod.string().nullish(),
-  "createdAt": zod.string()
+  "scopeOfWork": zod.string().nullish(),
+  "includeMaterials": zod.boolean().optional(),
+  "includeLabor": zod.boolean().optional(),
+  "includeEquipment": zod.boolean().optional(),
+  "includePermits": zod.boolean().optional(),
+  "includeDisposal": zod.boolean().optional(),
+  "includeDelivery": zod.boolean().optional(),
+  "includeSubcontractor": zod.boolean().optional(),
+  "includeOverhead": zod.boolean().optional(),
+  "includeProfit": zod.boolean().optional(),
+  "includeTax": zod.boolean().optional(),
+  "includeDiscount": zod.boolean().optional(),
+  "includeDeposit": zod.boolean().optional(),
+  "laborMethod": zod.string().optional(),
+  "laborFlatCost": zod.number().optional(),
+  "materialSubtotal": zod.number().optional(),
+  "laborSubtotal": zod.number().optional(),
+  "equipmentSubtotal": zod.number().optional(),
+  "permitsAmount": zod.number().optional(),
+  "disposalAmount": zod.number().optional(),
+  "deliveryAmount": zod.number().optional(),
+  "subcontractorAmount": zod.number().optional(),
+  "overheadAmount": zod.number().optional(),
+  "otherChargesSubtotal": zod.number().optional(),
+  "taxRate": zod.number().optional(),
+  "taxAmount": zod.number().optional(),
+  "markupPct": zod.number().optional(),
+  "markupAmount": zod.number().optional(),
+  "discountAmount": zod.number().optional(),
+  "depositRequired": zod.number().optional(),
+  "total": zod.number().optional(),
+  "notes": zod.string().nullish(),
+  "terms": zod.string().nullish(),
+  "warrantyNote": zod.string().nullish(),
+  "sentAt": zod.string().nullish(),
+  "approvedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "estimateId": zod.number(),
+  "section": zod.string(),
+  "description": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "hours": zod.number(),
+  "hourlyRate": zod.number(),
+  "lineTotal": zod.number(),
+  "sortOrder": zod.number()
+}))
 })
 
 
 /**
- * @summary Update an estimate
+ * @summary Update an estimate (recalculates totals)
  */
 export const UpdateEstimateParams = zod.object({
   "id": zod.coerce.number()
 })
 
 export const UpdateEstimateBody = zod.object({
-  "jobId": zod.number().optional(),
-  "clientId": zod.number().optional(),
+  "jobId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "estimateNumber": zod.string().nullish(),
   "title": zod.string().optional(),
-  "status": zod.enum(['draft', 'sent', 'accepted', 'rejected', 'revised']).optional(),
-  "taxRate": zod.number().optional(),
-  "notes": zod.string().optional(),
-  "validUntil": zod.string().optional()
+  "status": zod.string().optional(),
+  "estimateDate": zod.string().nullish(),
+  "validUntil": zod.string().nullish(),
+  "scopeOfWork": zod.string().nullish(),
+  "includeMaterials": zod.boolean().optional(),
+  "includeLabor": zod.boolean().optional(),
+  "includeEquipment": zod.boolean().optional(),
+  "includePermits": zod.boolean().optional(),
+  "includeDisposal": zod.boolean().optional(),
+  "includeDelivery": zod.boolean().optional(),
+  "includeSubcontractor": zod.boolean().optional(),
+  "includeOverhead": zod.boolean().optional(),
+  "includeProfit": zod.boolean().optional(),
+  "includeTax": zod.boolean().optional(),
+  "includeDiscount": zod.boolean().optional(),
+  "includeDeposit": zod.boolean().optional(),
+  "laborMethod": zod.string().optional(),
+  "laborFlatCost": zod.union([zod.number(),zod.string()]).optional(),
+  "permitsAmount": zod.union([zod.number(),zod.string()]).optional(),
+  "disposalAmount": zod.union([zod.number(),zod.string()]).optional(),
+  "deliveryAmount": zod.union([zod.number(),zod.string()]).optional(),
+  "subcontractorAmount": zod.union([zod.number(),zod.string()]).optional(),
+  "overheadAmount": zod.union([zod.number(),zod.string()]).optional(),
+  "taxRate": zod.union([zod.number(),zod.string()]).optional(),
+  "markupPct": zod.union([zod.number(),zod.string()]).optional(),
+  "discountAmount": zod.union([zod.number(),zod.string()]).optional(),
+  "depositRequired": zod.union([zod.number(),zod.string()]).optional(),
+  "notes": zod.string().nullish(),
+  "terms": zod.string().nullish(),
+  "warrantyNote": zod.string().nullish()
 })
 
 export const UpdateEstimateResponse = zod.object({
   "id": zod.number(),
   "jobId": zod.number().nullish(),
-  "jobTitle": zod.string().nullish(),
   "clientId": zod.number().nullish(),
   "clientName": zod.string().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "estimateNumber": zod.string().nullish(),
   "title": zod.string(),
-  "status": zod.enum(['draft', 'sent', 'accepted', 'rejected', 'revised']),
-  "subtotal": zod.number(),
-  "taxRate": zod.number(),
-  "taxAmount": zod.number(),
-  "total": zod.number(),
-  "notes": zod.string().nullish(),
-  "sentAt": zod.string().nullish(),
+  "status": zod.string(),
+  "estimateDate": zod.string().nullish(),
   "validUntil": zod.string().nullish(),
-  "createdAt": zod.string()
+  "scopeOfWork": zod.string().nullish(),
+  "includeMaterials": zod.boolean().optional(),
+  "includeLabor": zod.boolean().optional(),
+  "includeEquipment": zod.boolean().optional(),
+  "includePermits": zod.boolean().optional(),
+  "includeDisposal": zod.boolean().optional(),
+  "includeDelivery": zod.boolean().optional(),
+  "includeSubcontractor": zod.boolean().optional(),
+  "includeOverhead": zod.boolean().optional(),
+  "includeProfit": zod.boolean().optional(),
+  "includeTax": zod.boolean().optional(),
+  "includeDiscount": zod.boolean().optional(),
+  "includeDeposit": zod.boolean().optional(),
+  "laborMethod": zod.string().optional(),
+  "laborFlatCost": zod.number().optional(),
+  "materialSubtotal": zod.number().optional(),
+  "laborSubtotal": zod.number().optional(),
+  "equipmentSubtotal": zod.number().optional(),
+  "permitsAmount": zod.number().optional(),
+  "disposalAmount": zod.number().optional(),
+  "deliveryAmount": zod.number().optional(),
+  "subcontractorAmount": zod.number().optional(),
+  "overheadAmount": zod.number().optional(),
+  "otherChargesSubtotal": zod.number().optional(),
+  "taxRate": zod.number().optional(),
+  "taxAmount": zod.number().optional(),
+  "markupPct": zod.number().optional(),
+  "markupAmount": zod.number().optional(),
+  "discountAmount": zod.number().optional(),
+  "depositRequired": zod.number().optional(),
+  "total": zod.number().optional(),
+  "notes": zod.string().nullish(),
+  "terms": zod.string().nullish(),
+  "warrantyNote": zod.string().nullish(),
+  "sentAt": zod.string().nullish(),
+  "approvedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "estimateId": zod.number(),
+  "section": zod.string(),
+  "description": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "hours": zod.number(),
+  "hourlyRate": zod.number(),
+  "lineTotal": zod.number(),
+  "sortOrder": zod.number()
+}))
 })
 
 
@@ -459,56 +815,102 @@ export const DeleteEstimateParams = zod.object({
 
 
 /**
- * @summary Mark estimate as sent to client
+ * @summary Send estimate via email or text (marks as sent)
  */
 export const SendEstimateParams = zod.object({
   "id": zod.coerce.number()
 })
 
 export const SendEstimateBody = zod.object({
-  "clientEmail": zod.string(),
-  "message": zod.string().optional()
+  "channel": zod.enum(['email', 'sms']),
+  "to": zod.string().nullish(),
+  "message": zod.string().nullish()
 })
 
 export const SendEstimateResponse = zod.object({
-  "id": zod.number(),
-  "jobId": zod.number().nullish(),
-  "jobTitle": zod.string().nullish(),
-  "clientId": zod.number().nullish(),
-  "clientName": zod.string().nullish(),
-  "title": zod.string(),
-  "status": zod.enum(['draft', 'sent', 'accepted', 'rejected', 'revised']),
-  "subtotal": zod.number(),
-  "taxRate": zod.number(),
-  "taxAmount": zod.number(),
-  "total": zod.number(),
-  "notes": zod.string().nullish(),
-  "sentAt": zod.string().nullish(),
-  "validUntil": zod.string().nullish(),
-  "createdAt": zod.string()
+  "sent": zod.boolean(),
+  "marked": zod.boolean(),
+  "warning": zod.string().nullish()
 })
 
 
 /**
- * @summary List all line items for an estimate
+ * @summary Mark estimate approved
  */
-export const ListEstimateItemsParams = zod.object({
-  "estimateId": zod.coerce.number()
+export const ApproveEstimateParams = zod.object({
+  "id": zod.coerce.number()
 })
 
-export const ListEstimateItemsResponseItem = zod.object({
+export const ApproveEstimateResponse = zod.object({
+  "id": zod.number(),
+  "jobId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "estimateNumber": zod.string().nullish(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "estimateDate": zod.string().nullish(),
+  "validUntil": zod.string().nullish(),
+  "scopeOfWork": zod.string().nullish(),
+  "includeMaterials": zod.boolean().optional(),
+  "includeLabor": zod.boolean().optional(),
+  "includeEquipment": zod.boolean().optional(),
+  "includePermits": zod.boolean().optional(),
+  "includeDisposal": zod.boolean().optional(),
+  "includeDelivery": zod.boolean().optional(),
+  "includeSubcontractor": zod.boolean().optional(),
+  "includeOverhead": zod.boolean().optional(),
+  "includeProfit": zod.boolean().optional(),
+  "includeTax": zod.boolean().optional(),
+  "includeDiscount": zod.boolean().optional(),
+  "includeDeposit": zod.boolean().optional(),
+  "laborMethod": zod.string().optional(),
+  "laborFlatCost": zod.number().optional(),
+  "materialSubtotal": zod.number().optional(),
+  "laborSubtotal": zod.number().optional(),
+  "equipmentSubtotal": zod.number().optional(),
+  "permitsAmount": zod.number().optional(),
+  "disposalAmount": zod.number().optional(),
+  "deliveryAmount": zod.number().optional(),
+  "subcontractorAmount": zod.number().optional(),
+  "overheadAmount": zod.number().optional(),
+  "otherChargesSubtotal": zod.number().optional(),
+  "taxRate": zod.number().optional(),
+  "taxAmount": zod.number().optional(),
+  "markupPct": zod.number().optional(),
+  "markupAmount": zod.number().optional(),
+  "discountAmount": zod.number().optional(),
+  "depositRequired": zod.number().optional(),
+  "total": zod.number().optional(),
+  "notes": zod.string().nullish(),
+  "terms": zod.string().nullish(),
+  "warrantyNote": zod.string().nullish(),
+  "sentAt": zod.string().nullish(),
+  "approvedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "items": zod.array(zod.object({
   "id": zod.number(),
   "estimateId": zod.number(),
+  "section": zod.string(),
   "description": zod.string(),
-  "category": zod.enum(['labor', 'material', 'equipment', 'subcontractor', 'other']),
   "quantity": zod.number(),
   "unit": zod.string(),
   "unitPrice": zod.number(),
-  "totalPrice": zod.number(),
-  "notes": zod.string().nullish(),
+  "hours": zod.number(),
+  "hourlyRate": zod.number(),
+  "lineTotal": zod.number(),
   "sortOrder": zod.number()
+}))
 })
-export const ListEstimateItemsResponse = zod.array(ListEstimateItemsResponseItem)
+
+
+/**
+ * @summary Create an invoice from an approved estimate
+ */
+export const ConvertEstimateToInvoiceParams = zod.object({
+  "id": zod.coerce.number()
+})
 
 
 /**
@@ -518,207 +920,209 @@ export const CreateEstimateItemParams = zod.object({
   "estimateId": zod.coerce.number()
 })
 
-
-
-
 export const CreateEstimateItemBody = zod.object({
-  "description": zod.string().min(1),
-  "category": zod.enum(['labor', 'material', 'equipment', 'subcontractor', 'other']),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitPrice": zod.number(),
-  "notes": zod.string().optional(),
+  "section": zod.string().optional(),
+  "description": zod.string(),
+  "quantity": zod.union([zod.number(),zod.string()]).optional(),
+  "unit": zod.string().optional(),
+  "unitPrice": zod.union([zod.number(),zod.string()]).optional(),
+  "hours": zod.union([zod.number(),zod.string()]).optional(),
+  "hourlyRate": zod.union([zod.number(),zod.string()]).optional(),
   "sortOrder": zod.number().optional()
 })
 
 
 /**
- * @summary Update a line item
+ * @summary Update an estimate line item
  */
 export const UpdateEstimateItemParams = zod.object({
-  "estimateId": zod.coerce.number(),
-  "itemId": zod.coerce.number()
+  "id": zod.coerce.number()
 })
 
 export const UpdateEstimateItemBody = zod.object({
+  "section": zod.string().optional(),
   "description": zod.string().optional(),
-  "category": zod.enum(['labor', 'material', 'equipment', 'subcontractor', 'other']).optional(),
-  "quantity": zod.number().optional(),
+  "quantity": zod.union([zod.number(),zod.string()]).optional(),
   "unit": zod.string().optional(),
-  "unitPrice": zod.number().optional(),
-  "notes": zod.string().optional(),
+  "unitPrice": zod.union([zod.number(),zod.string()]).optional(),
+  "hours": zod.union([zod.number(),zod.string()]).optional(),
+  "hourlyRate": zod.union([zod.number(),zod.string()]).optional(),
   "sortOrder": zod.number().optional()
 })
 
 export const UpdateEstimateItemResponse = zod.object({
   "id": zod.number(),
   "estimateId": zod.number(),
+  "section": zod.string(),
   "description": zod.string(),
-  "category": zod.enum(['labor', 'material', 'equipment', 'subcontractor', 'other']),
   "quantity": zod.number(),
   "unit": zod.string(),
   "unitPrice": zod.number(),
-  "totalPrice": zod.number(),
-  "notes": zod.string().nullish(),
+  "hours": zod.number(),
+  "hourlyRate": zod.number(),
+  "lineTotal": zod.number(),
   "sortOrder": zod.number()
 })
 
 
 /**
- * @summary Delete a line item
+ * @summary Delete an estimate line item
  */
 export const DeleteEstimateItemParams = zod.object({
-  "estimateId": zod.coerce.number(),
-  "itemId": zod.coerce.number()
+  "id": zod.coerce.number()
 })
 
 
 /**
- * @summary List materials with optional price comparison
+ * @summary List invoices
  */
-export const ListMaterialsQueryParams = zod.object({
-  "zipCode": zod.coerce.string().optional(),
-  "category": zod.coerce.string().optional(),
-  "search": zod.coerce.string().optional()
+export const ListInvoicesQueryParams = zod.object({
+  "status": zod.coerce.string().optional()
 })
 
-export const ListMaterialsResponseItem = zod.object({
+export const ListInvoicesResponseItem = zod.object({
   "id": zod.number(),
-  "name": zod.string(),
-  "description": zod.string().nullish(),
-  "category": zod.string(),
-  "unit": zod.string(),
-  "basePrice": zod.number(),
-  "sku": zod.string().nullish(),
-  "lowesUrl": zod.string().nullish(),
-  "homeDepotUrl": zod.string().nullish(),
+  "jobId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "estimateId": zod.number().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "invoiceDate": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "totalAmount": zod.number(),
+  "amountPaid": zod.number(),
+  "balanceDue": zod.number(),
+  "status": zod.string(),
+  "notes": zod.string().nullish(),
   "createdAt": zod.string()
 })
-export const ListMaterialsResponse = zod.array(ListMaterialsResponseItem)
+export const ListInvoicesResponse = zod.array(ListInvoicesResponseItem)
 
 
 /**
- * @summary Create a material in the catalog
+ * @summary Create an invoice
  */
-
-
-
-export const CreateMaterialBody = zod.object({
-  "name": zod.string().min(1),
-  "description": zod.string().optional(),
-  "category": zod.string(),
-  "unit": zod.string(),
-  "basePrice": zod.number(),
-  "sku": zod.string().optional(),
-  "lowesUrl": zod.string().optional(),
-  "homeDepotUrl": zod.string().optional()
+export const CreateInvoiceBody = zod.object({
+  "jobId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "estimateId": zod.number().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "invoiceDate": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "totalAmount": zod.union([zod.number(),zod.string()]).optional(),
+  "notes": zod.string().nullish()
 })
 
 
 /**
- * @summary Get a material by ID
+ * @summary Get an invoice with payments
  */
-export const GetMaterialParams = zod.object({
+export const GetInvoiceParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const GetMaterialResponse = zod.object({
+export const GetInvoiceResponse = zod.object({
   "id": zod.number(),
-  "name": zod.string(),
-  "description": zod.string().nullish(),
-  "category": zod.string(),
-  "unit": zod.string(),
-  "basePrice": zod.number(),
-  "sku": zod.string().nullish(),
-  "lowesUrl": zod.string().nullish(),
-  "homeDepotUrl": zod.string().nullish(),
+  "jobId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "estimateId": zod.number().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "invoiceDate": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "totalAmount": zod.number(),
+  "amountPaid": zod.number(),
+  "balanceDue": zod.number(),
+  "status": zod.string(),
+  "notes": zod.string().nullish(),
   "createdAt": zod.string()
-})
-
-
-/**
- * @summary Update a material
- */
-export const UpdateMaterialParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-export const UpdateMaterialBody = zod.object({
-  "name": zod.string().optional(),
-  "description": zod.string().optional(),
-  "category": zod.string().optional(),
-  "unit": zod.string().optional(),
-  "basePrice": zod.number().optional(),
-  "sku": zod.string().optional(),
-  "lowesUrl": zod.string().optional(),
-  "homeDepotUrl": zod.string().optional()
-})
-
-export const UpdateMaterialResponse = zod.object({
+}).and(zod.object({
+  "payments": zod.array(zod.object({
   "id": zod.number(),
-  "name": zod.string(),
-  "description": zod.string().nullish(),
-  "category": zod.string(),
-  "unit": zod.string(),
-  "basePrice": zod.number(),
-  "sku": zod.string().nullish(),
-  "lowesUrl": zod.string().nullish(),
-  "homeDepotUrl": zod.string().nullish(),
+  "invoiceId": zod.number(),
+  "amount": zod.number(),
+  "date": zod.string().nullish(),
+  "method": zod.string(),
+  "notes": zod.string().nullish(),
   "createdAt": zod.string()
-})
+}))
+}))
 
 
 /**
- * @summary Delete a material
+ * @summary Update an invoice
  */
-export const DeleteMaterialParams = zod.object({
+export const UpdateInvoiceParams = zod.object({
   "id": zod.coerce.number()
 })
 
-
-/**
- * @summary Get supplier price comparison for a material
- */
-export const GetMaterialPricesParams = zod.object({
-  "id": zod.coerce.number()
+export const UpdateInvoiceBody = zod.object({
+  "jobId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "invoiceDate": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "totalAmount": zod.union([zod.number(),zod.string()]).optional(),
+  "status": zod.string().optional(),
+  "notes": zod.string().nullish()
 })
 
-export const GetMaterialPricesResponseItem = zod.object({
+export const UpdateInvoiceResponse = zod.object({
   "id": zod.number(),
-  "materialId": zod.number(),
-  "supplierName": zod.string(),
-  "price": zod.number(),
-  "unit": zod.string(),
-  "url": zod.string().nullish(),
-  "zipCode": zod.string().nullish(),
-  "inStock": zod.boolean(),
-  "updatedAt": zod.string()
-})
-export const GetMaterialPricesResponse = zod.array(GetMaterialPricesResponseItem)
+  "jobId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "estimateId": zod.number().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "invoiceDate": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "totalAmount": zod.number(),
+  "amountPaid": zod.number(),
+  "balanceDue": zod.number(),
+  "status": zod.string(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+}).and(zod.object({
+  "payments": zod.array(zod.object({
+  "id": zod.number(),
+  "invoiceId": zod.number(),
+  "amount": zod.number(),
+  "date": zod.string().nullish(),
+  "method": zod.string(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+}))
+}))
 
 
 /**
- * @summary Add a supplier price for a material
+ * @summary Delete an invoice
  */
-export const AddMaterialPriceParams = zod.object({
+export const DeleteInvoiceParams = zod.object({
   "id": zod.coerce.number()
 })
 
 
+/**
+ * @summary Record a payment on an invoice
+ */
+export const CreatePaymentParams = zod.object({
+  "invoiceId": zod.coerce.number()
+})
 
-
-export const AddMaterialPriceBody = zod.object({
-  "supplierName": zod.string().min(1),
-  "price": zod.number(),
-  "unit": zod.string(),
-  "url": zod.string().optional(),
-  "zipCode": zod.string().optional(),
-  "inStock": zod.boolean().optional()
+export const CreatePaymentBody = zod.object({
+  "amount": zod.union([zod.number(),zod.string()]),
+  "date": zod.string().nullish(),
+  "method": zod.string().optional(),
+  "notes": zod.string().nullish()
 })
 
 
 /**
- * @summary List all photos for a job
+ * @summary List photos for a job
  */
 export const ListJobPhotosParams = zod.object({
   "jobId": zod.coerce.number()
@@ -727,7 +1131,7 @@ export const ListJobPhotosParams = zod.object({
 export const ListJobPhotosResponseItem = zod.object({
   "id": zod.number(),
   "jobId": zod.number(),
-  "type": zod.enum(['before', 'after', 'progress', 'other']),
+  "type": zod.string(),
   "imageUrl": zod.string(),
   "caption": zod.string().nullish(),
   "takenAt": zod.string().nullish(),
@@ -739,39 +1143,35 @@ export const ListJobPhotosResponse = zod.array(ListJobPhotosResponseItem)
 /**
  * @summary Add a photo to a job
  */
-export const AddJobPhotoParams = zod.object({
+export const CreateJobPhotoParams = zod.object({
   "jobId": zod.coerce.number()
 })
 
-
-
-
-export const AddJobPhotoBody = zod.object({
-  "type": zod.enum(['before', 'after', 'progress', 'other']),
-  "imageUrl": zod.string().min(1),
-  "caption": zod.string().optional(),
-  "takenAt": zod.string().optional()
+export const CreateJobPhotoBody = zod.object({
+  "type": zod.string().optional(),
+  "imageUrl": zod.string(),
+  "caption": zod.string().nullish(),
+  "takenAt": zod.string().nullish()
 })
 
 
 /**
- * @summary Update a photo caption or type
+ * @summary Update a job photo
  */
 export const UpdateJobPhotoParams = zod.object({
-  "jobId": zod.coerce.number(),
-  "photoId": zod.coerce.number()
+  "id": zod.coerce.number()
 })
 
 export const UpdateJobPhotoBody = zod.object({
-  "type": zod.enum(['before', 'after', 'progress', 'other']).optional(),
-  "caption": zod.string().optional(),
-  "takenAt": zod.string().optional()
+  "type": zod.string().optional(),
+  "caption": zod.string().nullish(),
+  "takenAt": zod.string().nullish()
 })
 
 export const UpdateJobPhotoResponse = zod.object({
   "id": zod.number(),
   "jobId": zod.number(),
-  "type": zod.enum(['before', 'after', 'progress', 'other']),
+  "type": zod.string(),
   "imageUrl": zod.string(),
   "caption": zod.string().nullish(),
   "takenAt": zod.string().nullish(),
@@ -780,16 +1180,15 @@ export const UpdateJobPhotoResponse = zod.object({
 
 
 /**
- * @summary Delete a photo
+ * @summary Delete a job photo
  */
 export const DeleteJobPhotoParams = zod.object({
-  "jobId": zod.coerce.number(),
-  "photoId": zod.coerce.number()
+  "id": zod.coerce.number()
 })
 
 
 /**
- * @summary List all receipts
+ * @summary List receipts
  */
 export const ListReceiptsQueryParams = zod.object({
   "jobId": zod.coerce.number().optional(),
@@ -802,8 +1201,8 @@ export const ListReceiptsResponseItem = zod.object({
   "jobTitle": zod.string().nullish(),
   "vendor": zod.string(),
   "amount": zod.number(),
-  "date": zod.string(),
-  "category": zod.enum(['materials', 'labor', 'equipment', 'fuel', 'permits', 'other']),
+  "date": zod.string().nullish(),
+  "category": zod.string(),
   "description": zod.string().nullish(),
   "imageUrl": zod.string().nullish(),
   "createdAt": zod.string()
@@ -812,19 +1211,16 @@ export const ListReceiptsResponse = zod.array(ListReceiptsResponseItem)
 
 
 /**
- * @summary Create a new receipt
+ * @summary Create a receipt
  */
-
-
-
 export const CreateReceiptBody = zod.object({
-  "jobId": zod.number().optional(),
-  "vendor": zod.string().min(1),
-  "amount": zod.number(),
-  "date": zod.string(),
-  "category": zod.enum(['materials', 'labor', 'equipment', 'fuel', 'permits', 'other']),
-  "description": zod.string().optional(),
-  "imageUrl": zod.string().optional()
+  "jobId": zod.number().nullish(),
+  "vendor": zod.string(),
+  "amount": zod.union([zod.number(),zod.string()]).optional(),
+  "date": zod.string().nullish(),
+  "category": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "imageUrl": zod.string().nullish()
 })
 
 
@@ -841,8 +1237,8 @@ export const GetReceiptResponse = zod.object({
   "jobTitle": zod.string().nullish(),
   "vendor": zod.string(),
   "amount": zod.number(),
-  "date": zod.string(),
-  "category": zod.enum(['materials', 'labor', 'equipment', 'fuel', 'permits', 'other']),
+  "date": zod.string().nullish(),
+  "category": zod.string(),
   "description": zod.string().nullish(),
   "imageUrl": zod.string().nullish(),
   "createdAt": zod.string()
@@ -857,13 +1253,13 @@ export const UpdateReceiptParams = zod.object({
 })
 
 export const UpdateReceiptBody = zod.object({
-  "jobId": zod.number().optional(),
+  "jobId": zod.number().nullish(),
   "vendor": zod.string().optional(),
-  "amount": zod.number().optional(),
-  "date": zod.string().optional(),
-  "category": zod.enum(['materials', 'labor', 'equipment', 'fuel', 'permits', 'other']).optional(),
-  "description": zod.string().optional(),
-  "imageUrl": zod.string().optional()
+  "amount": zod.union([zod.number(),zod.string()]).optional(),
+  "date": zod.string().nullish(),
+  "category": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "imageUrl": zod.string().nullish()
 })
 
 export const UpdateReceiptResponse = zod.object({
@@ -872,8 +1268,8 @@ export const UpdateReceiptResponse = zod.object({
   "jobTitle": zod.string().nullish(),
   "vendor": zod.string(),
   "amount": zod.number(),
-  "date": zod.string(),
-  "category": zod.enum(['materials', 'labor', 'equipment', 'fuel', 'permits', 'other']),
+  "date": zod.string().nullish(),
+  "category": zod.string(),
   "description": zod.string().nullish(),
   "imageUrl": zod.string().nullish(),
   "createdAt": zod.string()
@@ -892,21 +1288,19 @@ export const DeleteReceiptParams = zod.object({
  * @summary List calendar events
  */
 export const ListEventsQueryParams = zod.object({
-  "startDate": zod.coerce.string().optional(),
-  "endDate": zod.coerce.string().optional(),
   "jobId": zod.coerce.number().optional()
 })
 
 export const ListEventsResponseItem = zod.object({
   "id": zod.number(),
   "jobId": zod.number().nullish(),
-  "jobTitle": zod.string().nullish(),
   "clientId": zod.number().nullish(),
+  "jobTitle": zod.string().nullish(),
   "clientName": zod.string().nullish(),
   "title": zod.string(),
-  "type": zod.enum(['estimate_visit', 'job_start', 'job_work', 'job_end', 'follow_up', 'meeting', 'other']),
+  "type": zod.string(),
   "startDatetime": zod.string(),
-  "endDatetime": zod.string(),
+  "endDatetime": zod.string().nullish(),
   "allDay": zod.boolean(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string()
@@ -917,18 +1311,15 @@ export const ListEventsResponse = zod.array(ListEventsResponseItem)
 /**
  * @summary Create a calendar event
  */
-
-
-
 export const CreateEventBody = zod.object({
-  "jobId": zod.number().optional(),
-  "clientId": zod.number().optional(),
-  "title": zod.string().min(1),
-  "type": zod.enum(['estimate_visit', 'job_start', 'job_work', 'job_end', 'follow_up', 'meeting', 'other']),
+  "jobId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "title": zod.string(),
+  "type": zod.string().optional(),
   "startDatetime": zod.string(),
-  "endDatetime": zod.string(),
+  "endDatetime": zod.string().nullish(),
   "allDay": zod.boolean().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().nullish()
 })
 
 
@@ -942,13 +1333,13 @@ export const GetEventParams = zod.object({
 export const GetEventResponse = zod.object({
   "id": zod.number(),
   "jobId": zod.number().nullish(),
-  "jobTitle": zod.string().nullish(),
   "clientId": zod.number().nullish(),
+  "jobTitle": zod.string().nullish(),
   "clientName": zod.string().nullish(),
   "title": zod.string(),
-  "type": zod.enum(['estimate_visit', 'job_start', 'job_work', 'job_end', 'follow_up', 'meeting', 'other']),
+  "type": zod.string(),
   "startDatetime": zod.string(),
-  "endDatetime": zod.string(),
+  "endDatetime": zod.string().nullish(),
   "allDay": zod.boolean(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string()
@@ -956,33 +1347,33 @@ export const GetEventResponse = zod.object({
 
 
 /**
- * @summary Update a calendar event
+ * @summary Update an event
  */
 export const UpdateEventParams = zod.object({
   "id": zod.coerce.number()
 })
 
 export const UpdateEventBody = zod.object({
-  "jobId": zod.number().optional(),
-  "clientId": zod.number().optional(),
+  "jobId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
   "title": zod.string().optional(),
-  "type": zod.enum(['estimate_visit', 'job_start', 'job_work', 'job_end', 'follow_up', 'meeting', 'other']).optional(),
+  "type": zod.string().optional(),
   "startDatetime": zod.string().optional(),
-  "endDatetime": zod.string().optional(),
+  "endDatetime": zod.string().nullish(),
   "allDay": zod.boolean().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().nullish()
 })
 
 export const UpdateEventResponse = zod.object({
   "id": zod.number(),
   "jobId": zod.number().nullish(),
-  "jobTitle": zod.string().nullish(),
   "clientId": zod.number().nullish(),
+  "jobTitle": zod.string().nullish(),
   "clientName": zod.string().nullish(),
   "title": zod.string(),
-  "type": zod.enum(['estimate_visit', 'job_start', 'job_work', 'job_end', 'follow_up', 'meeting', 'other']),
+  "type": zod.string(),
   "startDatetime": zod.string(),
-  "endDatetime": zod.string(),
+  "endDatetime": zod.string().nullish(),
   "allDay": zod.boolean(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string()
@@ -990,10 +1381,25 @@ export const UpdateEventResponse = zod.object({
 
 
 /**
- * @summary Delete a calendar event
+ * @summary Delete an event
  */
 export const DeleteEventParams = zod.object({
   "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const RequestUploadUrlBody = zod.object({
+  "name": zod.string(),
+  "size": zod.number(),
+  "contentType": zod.string()
+})
+
+export const RequestUploadUrlResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string()
 })
 
 

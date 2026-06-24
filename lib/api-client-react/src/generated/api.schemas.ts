@@ -9,16 +9,9 @@ export interface HealthStatus {
   status: string;
 }
 
-export type JobStatus = typeof JobStatus[keyof typeof JobStatus];
-
-
-export const JobStatus = {
-  lead: 'lead',
-  scheduled: 'scheduled',
-  in_progress: 'in_progress',
-  completed: 'completed',
-  cancelled: 'cancelled',
-} as const;
+export interface ErrorEnvelope {
+  error: string;
+}
 
 export interface Job {
   id: number;
@@ -27,7 +20,10 @@ export interface Job {
   clientId?: number | null;
   /** @nullable */
   clientName?: string | null;
-  status: JobStatus;
+  status: string;
+  /** @nullable */
+  jobType?: string | null;
+  priority: string;
   /** @nullable */
   description?: string | null;
   /** @nullable */
@@ -51,33 +47,21 @@ export interface Job {
   createdAt: string;
 }
 
-export type CalendarEventType = typeof CalendarEventType[keyof typeof CalendarEventType];
-
-
-export const CalendarEventType = {
-  estimate_visit: 'estimate_visit',
-  job_start: 'job_start',
-  job_work: 'job_work',
-  job_end: 'job_end',
-  follow_up: 'follow_up',
-  meeting: 'meeting',
-  other: 'other',
-} as const;
-
 export interface CalendarEvent {
   id: number;
   /** @nullable */
   jobId?: number | null;
   /** @nullable */
-  jobTitle?: string | null;
-  /** @nullable */
   clientId?: number | null;
+  /** @nullable */
+  jobTitle?: string | null;
   /** @nullable */
   clientName?: string | null;
   title: string;
-  type: CalendarEventType;
+  type: string;
   startDatetime: string;
-  endDatetime: string;
+  /** @nullable */
+  endDatetime?: string | null;
   allDay: boolean;
   /** @nullable */
   notes?: string | null;
@@ -85,14 +69,85 @@ export interface CalendarEvent {
 }
 
 export interface DashboardSummary {
-  activeJobsCount: number;
-  pendingEstimatesCount: number;
-  pendingEstimatesTotal: number;
-  thisMonthRevenue: number;
-  totalClientsCount: number;
-  upcomingEventsCount: number;
+  activeJobs: number;
+  jobsInProgress: number;
+  jobsFinished: number;
+  estimatesDrafted: number;
+  estimatesSent: number;
+  totalClients: number;
+  unpaidInvoices: number;
+  paidJobs: number;
+  totalUnpaidAmount: number;
+  totalPaidAmount: number;
   recentJobs: Job[];
   upcomingEvents: CalendarEvent[];
+}
+
+export interface Company {
+  id: number;
+  ownerId: string;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  zipCode?: string | null;
+  /** @nullable */
+  licenseNumber?: string | null;
+  /** @nullable */
+  insuranceNote?: string | null;
+  defaultTaxRate: number;
+  defaultLaborRate: number;
+  defaultMarkupPct: number;
+  /** @nullable */
+  defaultTerms?: string | null;
+  /** @nullable */
+  estimateFooter?: string | null;
+  createdAt: string;
+}
+
+export interface CompanyUpdate {
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  zipCode?: string | null;
+  /** @nullable */
+  licenseNumber?: string | null;
+  /** @nullable */
+  insuranceNote?: string | null;
+  defaultTaxRate?: number;
+  defaultLaborRate?: number;
+  defaultMarkupPct?: number;
+  /** @nullable */
+  defaultTerms?: string | null;
+  /** @nullable */
+  estimateFooter?: string | null;
 }
 
 export interface Client {
@@ -116,26 +171,39 @@ export interface Client {
 }
 
 export interface ClientInput {
-  /** @minLength 1 */
   name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  notes?: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  zipCode?: string | null;
+  /** @nullable */
+  notes?: string | null;
 }
 
 export interface ClientUpdate {
   name?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  notes?: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  zipCode?: string | null;
+  /** @nullable */
+  notes?: string | null;
 }
 
 export interface ClientHistory {
@@ -146,301 +214,447 @@ export interface ClientHistory {
   jobs: Job[];
 }
 
-export type JobInputStatus = typeof JobInputStatus[keyof typeof JobInputStatus];
-
-
-export const JobInputStatus = {
-  lead: 'lead',
-  scheduled: 'scheduled',
-  in_progress: 'in_progress',
-  completed: 'completed',
-  cancelled: 'cancelled',
-} as const;
-
 export interface JobInput {
-  /** @minLength 1 */
   title: string;
-  clientId?: number;
-  status?: JobInputStatus;
-  description?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  startDate?: string;
-  endDate?: string;
-  estimatedValue?: number;
-  notes?: string;
+  /** @nullable */
+  clientId?: number | null;
+  status?: string;
+  /** @nullable */
+  jobType?: string | null;
+  priority?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  zipCode?: string | null;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  /** @nullable */
+  estimatedValue?: number | string | null;
+  /** @nullable */
+  actualCost?: number | string | null;
+  /** @nullable */
+  notes?: string | null;
 }
-
-export type JobUpdateStatus = typeof JobUpdateStatus[keyof typeof JobUpdateStatus];
-
-
-export const JobUpdateStatus = {
-  lead: 'lead',
-  scheduled: 'scheduled',
-  in_progress: 'in_progress',
-  completed: 'completed',
-  cancelled: 'cancelled',
-} as const;
 
 export interface JobUpdate {
   title?: string;
-  clientId?: number;
-  status?: JobUpdateStatus;
-  description?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  startDate?: string;
-  endDate?: string;
-  estimatedValue?: number;
-  actualCost?: number;
-  notes?: string;
+  /** @nullable */
+  clientId?: number | null;
+  status?: string;
+  /** @nullable */
+  jobType?: string | null;
+  priority?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  zipCode?: string | null;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  /** @nullable */
+  estimatedValue?: number | string | null;
+  /** @nullable */
+  actualCost?: number | string | null;
+  /** @nullable */
+  notes?: string | null;
 }
 
 export interface JobSummary {
-  jobId: number;
-  estimateTotal: number;
-  receiptTotal: number;
+  job: Job;
   photoCount: number;
-  beforePhotoCount: number;
-  afterPhotoCount: number;
+  receiptTotal: number;
   estimateCount: number;
-  acceptedEstimateTotal: number;
+  hasMaterialList: boolean;
 }
 
-export type EstimateStatus = typeof EstimateStatus[keyof typeof EstimateStatus];
+export interface MaterialItem {
+  id: number;
+  materialListId: number;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  lineTotal: number;
+  /** @nullable */
+  supplier?: string | null;
+  /** @nullable */
+  sku?: string | null;
+  /** @nullable */
+  category?: string | null;
+  taxable: boolean;
+  markup: boolean;
+  /** @nullable */
+  notes?: string | null;
+  sortOrder: number;
+}
 
+export interface MaterialItemInput {
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  quantity?: number | string;
+  unit?: string;
+  unitPrice?: number | string;
+  /** @nullable */
+  supplier?: string | null;
+  /** @nullable */
+  sku?: string | null;
+  /** @nullable */
+  category?: string | null;
+  taxable?: boolean;
+  markup?: boolean;
+  /** @nullable */
+  notes?: string | null;
+  sortOrder?: number;
+}
 
-export const EstimateStatus = {
-  draft: 'draft',
-  sent: 'sent',
-  accepted: 'accepted',
-  rejected: 'rejected',
-  revised: 'revised',
-} as const;
+export interface MaterialItemUpdate {
+  name?: string;
+  /** @nullable */
+  description?: string | null;
+  quantity?: number | string;
+  unit?: string;
+  unitPrice?: number | string;
+  /** @nullable */
+  supplier?: string | null;
+  /** @nullable */
+  sku?: string | null;
+  /** @nullable */
+  category?: string | null;
+  taxable?: boolean;
+  markup?: boolean;
+  /** @nullable */
+  notes?: string | null;
+  sortOrder?: number;
+}
+
+export interface MaterialListUpdate {
+  name?: string;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface MaterialListDetail {
+  id: number;
+  jobId: number;
+  name: string;
+  /** @nullable */
+  notes?: string | null;
+  items: MaterialItem[];
+  subtotal: number;
+  taxableSubtotal: number;
+  markupSubtotal: number;
+}
 
 export interface Estimate {
   id: number;
   /** @nullable */
   jobId?: number | null;
   /** @nullable */
-  jobTitle?: string | null;
-  /** @nullable */
   clientId?: number | null;
   /** @nullable */
   clientName?: string | null;
+  /** @nullable */
+  jobTitle?: string | null;
+  /** @nullable */
+  estimateNumber?: string | null;
   title: string;
-  status: EstimateStatus;
-  subtotal: number;
-  taxRate: number;
-  taxAmount: number;
-  total: number;
+  status: string;
   /** @nullable */
-  notes?: string | null;
-  /** @nullable */
-  sentAt?: string | null;
+  estimateDate?: string | null;
   /** @nullable */
   validUntil?: string | null;
+  total: number;
   createdAt: string;
 }
-
-export type EstimateInputStatus = typeof EstimateInputStatus[keyof typeof EstimateInputStatus];
-
-
-export const EstimateInputStatus = {
-  draft: 'draft',
-  sent: 'sent',
-  accepted: 'accepted',
-  rejected: 'rejected',
-  revised: 'revised',
-} as const;
-
-export interface EstimateInput {
-  jobId?: number;
-  clientId?: number;
-  /** @minLength 1 */
-  title: string;
-  status?: EstimateInputStatus;
-  taxRate?: number;
-  notes?: string;
-  validUntil?: string;
-}
-
-export type EstimateUpdateStatus = typeof EstimateUpdateStatus[keyof typeof EstimateUpdateStatus];
-
-
-export const EstimateUpdateStatus = {
-  draft: 'draft',
-  sent: 'sent',
-  accepted: 'accepted',
-  rejected: 'rejected',
-  revised: 'revised',
-} as const;
-
-export interface EstimateUpdate {
-  jobId?: number;
-  clientId?: number;
-  title?: string;
-  status?: EstimateUpdateStatus;
-  taxRate?: number;
-  notes?: string;
-  validUntil?: string;
-}
-
-export interface SendEstimateInput {
-  clientEmail: string;
-  message?: string;
-}
-
-export type EstimateItemCategory = typeof EstimateItemCategory[keyof typeof EstimateItemCategory];
-
-
-export const EstimateItemCategory = {
-  labor: 'labor',
-  material: 'material',
-  equipment: 'equipment',
-  subcontractor: 'subcontractor',
-  other: 'other',
-} as const;
 
 export interface EstimateItem {
   id: number;
   estimateId: number;
+  section: string;
   description: string;
-  category: EstimateItemCategory;
   quantity: number;
   unit: string;
   unitPrice: number;
-  totalPrice: number;
-  /** @nullable */
-  notes?: string | null;
+  hours: number;
+  hourlyRate: number;
+  lineTotal: number;
   sortOrder: number;
 }
 
-export type EstimateItemInputCategory = typeof EstimateItemInputCategory[keyof typeof EstimateItemInputCategory];
+export interface EstimateDetail {
+  id: number;
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  clientId?: number | null;
+  /** @nullable */
+  clientName?: string | null;
+  /** @nullable */
+  jobTitle?: string | null;
+  /** @nullable */
+  estimateNumber?: string | null;
+  title: string;
+  status: string;
+  /** @nullable */
+  estimateDate?: string | null;
+  /** @nullable */
+  validUntil?: string | null;
+  /** @nullable */
+  scopeOfWork?: string | null;
+  includeMaterials?: boolean;
+  includeLabor?: boolean;
+  includeEquipment?: boolean;
+  includePermits?: boolean;
+  includeDisposal?: boolean;
+  includeDelivery?: boolean;
+  includeSubcontractor?: boolean;
+  includeOverhead?: boolean;
+  includeProfit?: boolean;
+  includeTax?: boolean;
+  includeDiscount?: boolean;
+  includeDeposit?: boolean;
+  laborMethod?: string;
+  laborFlatCost?: number;
+  materialSubtotal?: number;
+  laborSubtotal?: number;
+  equipmentSubtotal?: number;
+  permitsAmount?: number;
+  disposalAmount?: number;
+  deliveryAmount?: number;
+  subcontractorAmount?: number;
+  overheadAmount?: number;
+  otherChargesSubtotal?: number;
+  taxRate?: number;
+  taxAmount?: number;
+  markupPct?: number;
+  markupAmount?: number;
+  discountAmount?: number;
+  depositRequired?: number;
+  total?: number;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  terms?: string | null;
+  /** @nullable */
+  warrantyNote?: string | null;
+  /** @nullable */
+  sentAt?: string | null;
+  /** @nullable */
+  approvedAt?: string | null;
+  createdAt?: string;
+  items: EstimateItem[];
+}
 
+export interface EstimateInput {
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  clientId?: number | null;
+  title: string;
+  /** If true and jobId set, copy material list items into the estimate. */
+  importMaterialList?: boolean;
+}
 
-export const EstimateItemInputCategory = {
-  labor: 'labor',
-  material: 'material',
-  equipment: 'equipment',
-  subcontractor: 'subcontractor',
-  other: 'other',
-} as const;
+export interface EstimateUpdate {
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  clientId?: number | null;
+  /** @nullable */
+  estimateNumber?: string | null;
+  title?: string;
+  status?: string;
+  /** @nullable */
+  estimateDate?: string | null;
+  /** @nullable */
+  validUntil?: string | null;
+  /** @nullable */
+  scopeOfWork?: string | null;
+  includeMaterials?: boolean;
+  includeLabor?: boolean;
+  includeEquipment?: boolean;
+  includePermits?: boolean;
+  includeDisposal?: boolean;
+  includeDelivery?: boolean;
+  includeSubcontractor?: boolean;
+  includeOverhead?: boolean;
+  includeProfit?: boolean;
+  includeTax?: boolean;
+  includeDiscount?: boolean;
+  includeDeposit?: boolean;
+  laborMethod?: string;
+  laborFlatCost?: number | string;
+  permitsAmount?: number | string;
+  disposalAmount?: number | string;
+  deliveryAmount?: number | string;
+  subcontractorAmount?: number | string;
+  overheadAmount?: number | string;
+  taxRate?: number | string;
+  markupPct?: number | string;
+  discountAmount?: number | string;
+  depositRequired?: number | string;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  terms?: string | null;
+  /** @nullable */
+  warrantyNote?: string | null;
+}
 
 export interface EstimateItemInput {
-  /** @minLength 1 */
+  section?: string;
   description: string;
-  category: EstimateItemInputCategory;
-  quantity: number;
-  unit: string;
-  unitPrice: number;
-  notes?: string;
+  quantity?: number | string;
+  unit?: string;
+  unitPrice?: number | string;
+  hours?: number | string;
+  hourlyRate?: number | string;
   sortOrder?: number;
 }
-
-export type EstimateItemUpdateCategory = typeof EstimateItemUpdateCategory[keyof typeof EstimateItemUpdateCategory];
-
-
-export const EstimateItemUpdateCategory = {
-  labor: 'labor',
-  material: 'material',
-  equipment: 'equipment',
-  subcontractor: 'subcontractor',
-  other: 'other',
-} as const;
 
 export interface EstimateItemUpdate {
+  section?: string;
   description?: string;
-  category?: EstimateItemUpdateCategory;
-  quantity?: number;
+  quantity?: number | string;
   unit?: string;
-  unitPrice?: number;
-  notes?: string;
+  unitPrice?: number | string;
+  hours?: number | string;
+  hourlyRate?: number | string;
   sortOrder?: number;
 }
 
-export interface Material {
+export type SendEstimateInputChannel = typeof SendEstimateInputChannel[keyof typeof SendEstimateInputChannel];
+
+
+export const SendEstimateInputChannel = {
+  email: 'email',
+  sms: 'sms',
+} as const;
+
+export interface SendEstimateInput {
+  channel: SendEstimateInputChannel;
+  /** @nullable */
+  to?: string | null;
+  /** @nullable */
+  message?: string | null;
+}
+
+export interface SendResult {
+  sent: boolean;
+  marked: boolean;
+  /** @nullable */
+  warning?: string | null;
+}
+
+export interface Invoice {
   id: number;
-  name: string;
   /** @nullable */
-  description?: string | null;
-  category: string;
-  unit: string;
-  basePrice: number;
+  jobId?: number | null;
   /** @nullable */
-  sku?: string | null;
+  clientId?: number | null;
   /** @nullable */
-  lowesUrl?: string | null;
+  clientName?: string | null;
   /** @nullable */
-  homeDepotUrl?: string | null;
+  jobTitle?: string | null;
+  /** @nullable */
+  estimateId?: number | null;
+  /** @nullable */
+  invoiceNumber?: string | null;
+  /** @nullable */
+  invoiceDate?: string | null;
+  /** @nullable */
+  dueDate?: string | null;
+  totalAmount: number;
+  amountPaid: number;
+  balanceDue: number;
+  status: string;
+  /** @nullable */
+  notes?: string | null;
   createdAt: string;
 }
 
-export interface MaterialInput {
-  /** @minLength 1 */
-  name: string;
-  description?: string;
-  category: string;
-  unit: string;
-  basePrice: number;
-  sku?: string;
-  lowesUrl?: string;
-  homeDepotUrl?: string;
-}
-
-export interface MaterialUpdate {
-  name?: string;
-  description?: string;
-  category?: string;
-  unit?: string;
-  basePrice?: number;
-  sku?: string;
-  lowesUrl?: string;
-  homeDepotUrl?: string;
-}
-
-export interface SupplierPrice {
+export interface Payment {
   id: number;
-  materialId: number;
-  supplierName: string;
-  price: number;
-  unit: string;
+  invoiceId: number;
+  amount: number;
   /** @nullable */
-  url?: string | null;
+  date?: string | null;
+  method: string;
   /** @nullable */
-  zipCode?: string | null;
-  inStock: boolean;
-  updatedAt: string;
+  notes?: string | null;
+  createdAt: string;
 }
 
-export interface SupplierPriceInput {
-  /** @minLength 1 */
-  supplierName: string;
-  price: number;
-  unit: string;
-  url?: string;
-  zipCode?: string;
-  inStock?: boolean;
+export type InvoiceDetail = Invoice & {
+  payments: Payment[];
+};
+
+export interface InvoiceInput {
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  clientId?: number | null;
+  /** @nullable */
+  estimateId?: number | null;
+  /** @nullable */
+  invoiceNumber?: string | null;
+  /** @nullable */
+  invoiceDate?: string | null;
+  /** @nullable */
+  dueDate?: string | null;
+  totalAmount?: number | string;
+  /** @nullable */
+  notes?: string | null;
 }
 
-export type JobPhotoType = typeof JobPhotoType[keyof typeof JobPhotoType];
+export interface InvoiceUpdate {
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  clientId?: number | null;
+  /** @nullable */
+  invoiceNumber?: string | null;
+  /** @nullable */
+  invoiceDate?: string | null;
+  /** @nullable */
+  dueDate?: string | null;
+  totalAmount?: number | string;
+  status?: string;
+  /** @nullable */
+  notes?: string | null;
+}
 
-
-export const JobPhotoType = {
-  before: 'before',
-  after: 'after',
-  progress: 'progress',
-  other: 'other',
-} as const;
+export interface PaymentInput {
+  amount: number | string;
+  /** @nullable */
+  date?: string | null;
+  method?: string;
+  /** @nullable */
+  notes?: string | null;
+}
 
 export interface JobPhoto {
   id: number;
   jobId: number;
-  type: JobPhotoType;
+  type: string;
   imageUrl: string;
   /** @nullable */
   caption?: string | null;
@@ -449,51 +663,22 @@ export interface JobPhoto {
   createdAt: string;
 }
 
-export type JobPhotoInputType = typeof JobPhotoInputType[keyof typeof JobPhotoInputType];
-
-
-export const JobPhotoInputType = {
-  before: 'before',
-  after: 'after',
-  progress: 'progress',
-  other: 'other',
-} as const;
-
 export interface JobPhotoInput {
-  type: JobPhotoInputType;
-  /** @minLength 1 */
+  type?: string;
   imageUrl: string;
-  caption?: string;
-  takenAt?: string;
+  /** @nullable */
+  caption?: string | null;
+  /** @nullable */
+  takenAt?: string | null;
 }
-
-export type JobPhotoUpdateType = typeof JobPhotoUpdateType[keyof typeof JobPhotoUpdateType];
-
-
-export const JobPhotoUpdateType = {
-  before: 'before',
-  after: 'after',
-  progress: 'progress',
-  other: 'other',
-} as const;
 
 export interface JobPhotoUpdate {
-  type?: JobPhotoUpdateType;
-  caption?: string;
-  takenAt?: string;
+  type?: string;
+  /** @nullable */
+  caption?: string | null;
+  /** @nullable */
+  takenAt?: string | null;
 }
-
-export type ReceiptCategory = typeof ReceiptCategory[keyof typeof ReceiptCategory];
-
-
-export const ReceiptCategory = {
-  materials: 'materials',
-  labor: 'labor',
-  equipment: 'equipment',
-  fuel: 'fuel',
-  permits: 'permits',
-  other: 'other',
-} as const;
 
 export interface Receipt {
   id: number;
@@ -503,8 +688,9 @@ export interface Receipt {
   jobTitle?: string | null;
   vendor: string;
   amount: number;
-  date: string;
-  category: ReceiptCategory;
+  /** @nullable */
+  date?: string | null;
+  category: string;
   /** @nullable */
   description?: string | null;
   /** @nullable */
@@ -512,98 +698,73 @@ export interface Receipt {
   createdAt: string;
 }
 
-export type ReceiptInputCategory = typeof ReceiptInputCategory[keyof typeof ReceiptInputCategory];
-
-
-export const ReceiptInputCategory = {
-  materials: 'materials',
-  labor: 'labor',
-  equipment: 'equipment',
-  fuel: 'fuel',
-  permits: 'permits',
-  other: 'other',
-} as const;
-
 export interface ReceiptInput {
-  jobId?: number;
-  /** @minLength 1 */
+  /** @nullable */
+  jobId?: number | null;
   vendor: string;
-  amount: number;
-  date: string;
-  category: ReceiptInputCategory;
-  description?: string;
-  imageUrl?: string;
+  amount?: number | string;
+  /** @nullable */
+  date?: string | null;
+  category?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
 }
-
-export type ReceiptUpdateCategory = typeof ReceiptUpdateCategory[keyof typeof ReceiptUpdateCategory];
-
-
-export const ReceiptUpdateCategory = {
-  materials: 'materials',
-  labor: 'labor',
-  equipment: 'equipment',
-  fuel: 'fuel',
-  permits: 'permits',
-  other: 'other',
-} as const;
 
 export interface ReceiptUpdate {
-  jobId?: number;
+  /** @nullable */
+  jobId?: number | null;
   vendor?: string;
-  amount?: number;
-  date?: string;
-  category?: ReceiptUpdateCategory;
-  description?: string;
-  imageUrl?: string;
+  amount?: number | string;
+  /** @nullable */
+  date?: string | null;
+  category?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
 }
-
-export type CalendarEventInputType = typeof CalendarEventInputType[keyof typeof CalendarEventInputType];
-
-
-export const CalendarEventInputType = {
-  estimate_visit: 'estimate_visit',
-  job_start: 'job_start',
-  job_work: 'job_work',
-  job_end: 'job_end',
-  follow_up: 'follow_up',
-  meeting: 'meeting',
-  other: 'other',
-} as const;
 
 export interface CalendarEventInput {
-  jobId?: number;
-  clientId?: number;
-  /** @minLength 1 */
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  clientId?: number | null;
   title: string;
-  type: CalendarEventInputType;
+  type?: string;
   startDatetime: string;
-  endDatetime: string;
+  /** @nullable */
+  endDatetime?: string | null;
   allDay?: boolean;
-  notes?: string;
+  /** @nullable */
+  notes?: string | null;
 }
 
-export type CalendarEventUpdateType = typeof CalendarEventUpdateType[keyof typeof CalendarEventUpdateType];
-
-
-export const CalendarEventUpdateType = {
-  estimate_visit: 'estimate_visit',
-  job_start: 'job_start',
-  job_work: 'job_work',
-  job_end: 'job_end',
-  follow_up: 'follow_up',
-  meeting: 'meeting',
-  other: 'other',
-} as const;
-
 export interface CalendarEventUpdate {
-  jobId?: number;
-  clientId?: number;
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  clientId?: number | null;
   title?: string;
-  type?: CalendarEventUpdateType;
+  type?: string;
   startDatetime?: string;
-  endDatetime?: string;
+  /** @nullable */
+  endDatetime?: string | null;
   allDay?: boolean;
-  notes?: string;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface UploadUrlRequest {
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
 }
 
 export type ListClientsParams = {
@@ -613,17 +774,16 @@ search?: string;
 export type ListJobsParams = {
 status?: string;
 clientId?: number;
+search?: string;
 };
 
 export type ListEstimatesParams = {
-jobId?: number;
 status?: string;
+jobId?: number;
 };
 
-export type ListMaterialsParams = {
-zipCode?: string;
-category?: string;
-search?: string;
+export type ListInvoicesParams = {
+status?: string;
 };
 
 export type ListReceiptsParams = {
@@ -632,8 +792,6 @@ category?: string;
 };
 
 export type ListEventsParams = {
-startDate?: string;
-endDate?: string;
 jobId?: number;
 };
 

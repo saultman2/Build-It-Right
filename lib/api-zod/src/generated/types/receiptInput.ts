@@ -5,15 +5,17 @@
  * BuildPro Construction Business Manager API
  * OpenAPI spec version: 0.1.0
  */
-import type { ReceiptInputCategory } from './receiptInputCategory';
 
 export interface ReceiptInput {
-  jobId?: number;
-  /** @minLength 1 */
+  /** @nullable */
+  jobId?: number | null;
   vendor: string;
-  amount: number;
-  date: string;
-  category: ReceiptInputCategory;
-  description?: string;
-  imageUrl?: string;
+  amount?: number | string;
+  /** @nullable */
+  date?: string | null;
+  category?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
 }

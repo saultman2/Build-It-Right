@@ -1,18 +1,107 @@
 import { Router, type IRouter } from "express";
-import { eq, gte, sql } from "drizzle-orm";
-import { db, jobsTable, estimatesTable, clientsTable, calendarEventsTable } from "@workspace/db";
+import { eq, and, inArray, desc, asc, gte, count, sum } from "drizzle-orm";
+import {
+  db,
+  jobsTable,
+  clientsTable,
+  estimatesTable,
+  invoicesTable,
+  calendarEventsTable,
+} from "@workspace/db";
+import { requireAuth } from "../lib/auth";
+import { serializeJob, serializeEvent, n } from "../lib/serialize";
 
 const router: IRouter = Router();
 
-router.get("/dashboard/summary", async (_req, res): Promise<void> => {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const todayStr = now.toISOString();
+router.use(requireAuth);
 
-  const [jobs, estimates, clients, upcomingEvents, recentJobRows] = await Promise.all([
-    db.select({ status: jobsTable.status }).from(jobsTable),
-    db.select({ status: estimatesTable.status, total: estimatesTable.total, createdAt: estimatesTable.createdAt }).from(estimatesTable),
-    db.select({ id: clientsTable.id }).from(clientsTable),
+router.get("/dashboard/summary", async (req, res): Promise<void> => {
+  const companyId = req.companyId!;
+  const companyCond = eq(jobsTable.companyId, companyId);
+
+  const [
+    activeJobsRows,
+    inProgressRows,
+    finishedRows,
+    paidJobsRows,
+    draftedRows,
+    sentRows,
+    clientsRows,
+    unpaidRows,
+    paidInvoiceRows,
+    recentJobRows,
+    upcomingEventRows,
+  ] = await Promise.all([
+    db
+      .select({ c: count() })
+      .from(jobsTable)
+      .where(
+        and(
+          companyCond,
+          inArray(jobsTable.status, [
+            "new",
+            "material_list",
+            "estimate",
+            "estimate_sent",
+            "approved",
+            "in_progress",
+          ]),
+        ),
+      ),
+    db
+      .select({ c: count() })
+      .from(jobsTable)
+      .where(and(companyCond, eq(jobsTable.status, "in_progress"))),
+    db
+      .select({ c: count() })
+      .from(jobsTable)
+      .where(and(companyCond, eq(jobsTable.status, "finished"))),
+    db
+      .select({ c: count() })
+      .from(jobsTable)
+      .where(and(companyCond, eq(jobsTable.status, "paid"))),
+    db
+      .select({ c: count() })
+      .from(estimatesTable)
+      .where(
+        and(
+          eq(estimatesTable.companyId, companyId),
+          eq(estimatesTable.status, "draft"),
+        ),
+      ),
+    db
+      .select({ c: count() })
+      .from(estimatesTable)
+      .where(
+        and(
+          eq(estimatesTable.companyId, companyId),
+          eq(estimatesTable.status, "sent"),
+        ),
+      ),
+    db
+      .select({ c: count() })
+      .from(clientsTable)
+      .where(eq(clientsTable.companyId, companyId)),
+    db
+      .select({ c: count(), total: sum(invoicesTable.balanceDue) })
+      .from(invoicesTable)
+      .where(
+        and(
+          eq(invoicesTable.companyId, companyId),
+          inArray(invoicesTable.status, ["unpaid", "partial", "overdue"]),
+        ),
+      ),
+    db
+      .select({ total: sum(invoicesTable.amountPaid) })
+      .from(invoicesTable)
+      .where(eq(invoicesTable.companyId, companyId)),
+    db
+      .select({ job: jobsTable, clientName: clientsTable.name })
+      .from(jobsTable)
+      .leftJoin(clientsTable, eq(jobsTable.clientId, clientsTable.id))
+      .where(companyCond)
+      .orderBy(desc(jobsTable.createdAt))
+      .limit(5),
     db
       .select({
         event: calendarEventsTable,
@@ -22,45 +111,34 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       .from(calendarEventsTable)
       .leftJoin(jobsTable, eq(calendarEventsTable.jobId, jobsTable.id))
       .leftJoin(clientsTable, eq(calendarEventsTable.clientId, clientsTable.id))
-      .where(gte(calendarEventsTable.startDatetime, todayStr))
-      .orderBy(calendarEventsTable.startDatetime)
-      .limit(5),
-    db
-      .select({ job: jobsTable, clientName: clientsTable.name })
-      .from(jobsTable)
-      .leftJoin(clientsTable, eq(jobsTable.clientId, clientsTable.id))
-      .orderBy(jobsTable.createdAt)
+      .where(
+        and(
+          eq(calendarEventsTable.companyId, companyId),
+          gte(calendarEventsTable.startDatetime, new Date().toISOString().slice(0, 10)),
+        ),
+      )
+      .orderBy(asc(calendarEventsTable.startDatetime))
       .limit(5),
   ]);
 
-  const activeJobsCount = jobs.filter(j => j.status === "in_progress" || j.status === "scheduled").length;
-  const pendingEstimates = estimates.filter(e => e.status === "sent" || e.status === "draft");
-  const pendingEstimatesTotal = pendingEstimates.reduce((s, e) => s + parseFloat(e.total ?? "0"), 0);
-
-  const thisMonthRevenue = estimates
-    .filter(e => e.status === "accepted" && e.createdAt >= new Date(startOfMonth))
-    .reduce((s, e) => s + parseFloat(e.total ?? "0"), 0);
-
   res.json({
-    activeJobsCount,
-    pendingEstimatesCount: pendingEstimates.length,
-    pendingEstimatesTotal,
-    thisMonthRevenue,
-    totalClientsCount: clients.length,
-    upcomingEventsCount: upcomingEvents.length,
-    recentJobs: recentJobRows.map(({ job, clientName }) => ({
-      ...job,
-      clientName: clientName ?? null,
-      estimatedValue: job.estimatedValue ? parseFloat(job.estimatedValue) : null,
-      actualCost: job.actualCost ? parseFloat(job.actualCost) : null,
-      createdAt: job.createdAt.toISOString(),
-    })),
-    upcomingEvents: upcomingEvents.map(({ event, jobTitle, clientName }) => ({
-      ...event,
-      jobTitle: jobTitle ?? null,
-      clientName: clientName ?? null,
-      createdAt: event.createdAt.toISOString(),
-    })),
+    activeJobs: activeJobsRows[0].c,
+    jobsInProgress: inProgressRows[0].c,
+    jobsFinished: finishedRows[0].c,
+    estimatesDrafted: draftedRows[0].c,
+    estimatesSent: sentRows[0].c,
+    totalClients: clientsRows[0].c,
+    unpaidInvoices: unpaidRows[0].c,
+    paidJobs: paidJobsRows[0].c,
+    totalUnpaidAmount: n(unpaidRows[0].total),
+    totalPaidAmount: n(paidInvoiceRows[0].total),
+    recentJobs: recentJobRows.map((r) => serializeJob(r.job, r.clientName)),
+    upcomingEvents: upcomingEventRows.map((r) =>
+      serializeEvent(r.event, {
+        jobTitle: r.jobTitle,
+        clientName: r.clientName,
+      }),
+    ),
   });
 });
 

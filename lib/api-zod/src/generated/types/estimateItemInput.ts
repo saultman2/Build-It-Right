@@ -5,15 +5,14 @@
  * BuildPro Construction Business Manager API
  * OpenAPI spec version: 0.1.0
  */
-import type { EstimateItemInputCategory } from './estimateItemInputCategory';
 
 export interface EstimateItemInput {
-  /** @minLength 1 */
+  section?: string;
   description: string;
-  category: EstimateItemInputCategory;
-  quantity: number;
-  unit: string;
-  unitPrice: number;
-  notes?: string;
+  quantity?: number | string;
+  unit?: string;
+  unitPrice?: number | string;
+  hours?: number | string;
+  hourlyRate?: number | string;
   sortOrder?: number;
 }

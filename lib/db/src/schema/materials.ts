@@ -1,35 +1,57 @@
-import { pgTable, serial, text, timestamp, integer, numeric, boolean } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  integer,
+  numeric,
+  boolean,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const materialsTable = pgTable("materials", {
+export const materialListsTable = pgTable("material_lists", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  category: text("category").notNull(),
-  unit: text("unit").notNull(),
-  basePrice: numeric("base_price", { precision: 12, scale: 2 }).notNull().default("0"),
-  sku: text("sku"),
-  lowesUrl: text("lowes_url"),
-  homeDepotUrl: text("home_depot_url"),
+  companyId: integer("company_id").notNull(),
+  jobId: integer("job_id").notNull(),
+  name: text("name").notNull().default("Material List"),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const supplierPricesTable = pgTable("supplier_prices", {
+export const materialItemsTable = pgTable("material_items", {
   id: serial("id").primaryKey(),
-  materialId: integer("material_id").references(() => materialsTable.id).notNull(),
-  supplierName: text("supplier_name").notNull(),
-  price: numeric("price", { precision: 12, scale: 2 }).notNull(),
-  unit: text("unit").notNull(),
-  url: text("url"),
-  zipCode: text("zip_code"),
-  inStock: boolean("in_stock").notNull().default(true),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  companyId: integer("company_id").notNull(),
+  materialListId: integer("material_list_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  quantity: numeric("quantity", { precision: 12, scale: 3 }).notNull().default("0"),
+  unit: text("unit").notNull().default("ea"),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull().default("0"),
+  lineTotal: numeric("line_total", { precision: 12, scale: 2 }).notNull().default("0"),
+  supplier: text("supplier"),
+  sku: text("sku"),
+  category: text("category"),
+  taxable: boolean("taxable").notNull().default(false),
+  markup: boolean("markup").notNull().default(false),
+  notes: text("notes"),
+  sortOrder: integer("sort_order").notNull().default(0),
 });
 
-export const insertMaterialSchema = createInsertSchema(materialsTable).omit({ id: true, createdAt: true });
-export const insertSupplierPriceSchema = createInsertSchema(supplierPricesTable).omit({ id: true, updatedAt: true });
-export type InsertMaterial = z.infer<typeof insertMaterialSchema>;
-export type InsertSupplierPrice = z.infer<typeof insertSupplierPriceSchema>;
-export type Material = typeof materialsTable.$inferSelect;
-export type SupplierPrice = typeof supplierPricesTable.$inferSelect;
+export const insertMaterialListSchema = createInsertSchema(materialListsTable).omit({
+  id: true,
+  companyId: true,
+  createdAt: true,
+});
+export const updateMaterialListSchema = insertMaterialListSchema.partial().omit({ jobId: true });
+export const insertMaterialItemSchema = createInsertSchema(materialItemsTable).omit({
+  id: true,
+  companyId: true,
+  materialListId: true,
+  lineTotal: true,
+});
+export const updateMaterialItemSchema = insertMaterialItemSchema.partial();
+export type InsertMaterialList = z.infer<typeof insertMaterialListSchema>;
+export type InsertMaterialItem = z.infer<typeof insertMaterialItemSchema>;
+export type MaterialList = typeof materialListsTable.$inferSelect;
+export type MaterialItem = typeof materialItemsTable.$inferSelect;

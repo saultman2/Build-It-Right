@@ -1,25 +1,20 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db, receiptsTable, jobsTable } from "@workspace/db";
 import {
   ListReceiptsQueryParams,
-  GetReceiptParams,
   CreateReceiptBody,
+  GetReceiptParams,
   UpdateReceiptParams,
   UpdateReceiptBody,
   DeleteReceiptParams,
 } from "@workspace/api-zod";
+import { requireAuth } from "../lib/auth";
+import { serializeReceipt, toNumStr } from "../lib/serialize";
 
 const router: IRouter = Router();
 
-function formatReceipt(r: typeof receiptsTable.$inferSelect, jobTitle?: string | null) {
-  return {
-    ...r,
-    jobTitle: jobTitle ?? null,
-    amount: parseFloat(r.amount ?? "0"),
-    createdAt: r.createdAt.toISOString(),
-  };
-}
+router.use(requireAuth);
 
 router.get("/receipts", async (req, res): Promise<void> => {
   const query = ListReceiptsQueryParams.safeParse(req.query);
@@ -27,19 +22,17 @@ router.get("/receipts", async (req, res): Promise<void> => {
     res.status(400).json({ error: query.error.message });
     return;
   }
-
-  const conditions = [];
-  if (query.data.jobId) conditions.push(eq(receiptsTable.jobId, Number(query.data.jobId)));
-  if (query.data.category) conditions.push(eq(receiptsTable.category, query.data.category));
-
+  const conds = [eq(receiptsTable.companyId, req.companyId!)];
+  if (query.data.jobId) conds.push(eq(receiptsTable.jobId, query.data.jobId));
+  if (query.data.category)
+    conds.push(eq(receiptsTable.category, query.data.category));
   const rows = await db
     .select({ receipt: receiptsTable, jobTitle: jobsTable.title })
     .from(receiptsTable)
     .leftJoin(jobsTable, eq(receiptsTable.jobId, jobsTable.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(receiptsTable.date);
-
-  res.json(rows.map(({ receipt, jobTitle }) => formatReceipt(receipt, jobTitle)));
+    .where(and(...conds))
+    .orderBy(desc(receiptsTable.createdAt));
+  res.json(rows.map((r) => serializeReceipt(r.receipt, r.jobTitle)));
 });
 
 router.post("/receipts", async (req, res): Promise<void> => {
@@ -48,11 +41,21 @@ router.post("/receipts", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [receipt] = await db.insert(receiptsTable).values({
-    ...parsed.data,
-    amount: parsed.data.amount.toString(),
-  }).returning();
-  res.status(201).json(formatReceipt(receipt));
+  const d = parsed.data;
+  const [receipt] = await db
+    .insert(receiptsTable)
+    .values({
+      companyId: req.companyId!,
+      jobId: d.jobId ?? null,
+      vendor: d.vendor,
+      amount: toNumStr(d.amount),
+      date: d.date,
+      category: d.category,
+      description: d.description,
+      imageUrl: d.imageUrl,
+    })
+    .returning();
+  res.status(201).json(serializeReceipt(receipt));
 });
 
 router.get("/receipts/:id", async (req, res): Promise<void> => {
@@ -61,16 +64,20 @@ router.get("/receipts/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db
-    .select({ receipt: receiptsTable, jobTitle: jobsTable.title })
+  const [receipt] = await db
+    .select()
     .from(receiptsTable)
-    .leftJoin(jobsTable, eq(receiptsTable.jobId, jobsTable.id))
-    .where(eq(receiptsTable.id, params.data.id));
-  if (!row) {
+    .where(
+      and(
+        eq(receiptsTable.id, params.data.id),
+        eq(receiptsTable.companyId, req.companyId!),
+      ),
+    );
+  if (!receipt) {
     res.status(404).json({ error: "Receipt not found" });
     return;
   }
-  res.json(formatReceipt(row.receipt, row.jobTitle));
+  res.json(serializeReceipt(receipt));
 });
 
 router.patch("/receipts/:id", async (req, res): Promise<void> => {
@@ -84,18 +91,30 @@ router.patch("/receipts/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const updateData: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.amount !== undefined) updateData.amount = parsed.data.amount.toString();
+  const d = parsed.data;
   const [receipt] = await db
     .update(receiptsTable)
-    .set(updateData)
-    .where(eq(receiptsTable.id, params.data.id))
+    .set({
+      jobId: d.jobId,
+      vendor: d.vendor,
+      amount: toNumStr(d.amount),
+      date: d.date,
+      category: d.category,
+      description: d.description,
+      imageUrl: d.imageUrl,
+    })
+    .where(
+      and(
+        eq(receiptsTable.id, params.data.id),
+        eq(receiptsTable.companyId, req.companyId!),
+      ),
+    )
     .returning();
   if (!receipt) {
     res.status(404).json({ error: "Receipt not found" });
     return;
   }
-  res.json(formatReceipt(receipt));
+  res.json(serializeReceipt(receipt));
 });
 
 router.delete("/receipts/:id", async (req, res): Promise<void> => {
@@ -104,7 +123,15 @@ router.delete("/receipts/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [receipt] = await db.delete(receiptsTable).where(eq(receiptsTable.id, params.data.id)).returning();
+  const [receipt] = await db
+    .delete(receiptsTable)
+    .where(
+      and(
+        eq(receiptsTable.id, params.data.id),
+        eq(receiptsTable.companyId, req.companyId!),
+      ),
+    )
+    .returning();
   if (!receipt) {
     res.status(404).json({ error: "Receipt not found" });
     return;

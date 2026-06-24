@@ -7,7 +7,5 @@
  */
 
 export type ListEventsParams = {
-startDate?: string;
-endDate?: string;
 jobId?: number;
 };

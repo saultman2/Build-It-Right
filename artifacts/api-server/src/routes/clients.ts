@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, sql } from "drizzle-orm";
+import { eq, and, ilike, desc } from "drizzle-orm";
 import { db, clientsTable, jobsTable } from "@workspace/db";
 import {
   ListClientsQueryParams,
@@ -10,8 +10,12 @@ import {
   DeleteClientParams,
   GetClientHistoryParams,
 } from "@workspace/api-zod";
+import { requireAuth } from "../lib/auth";
+import { serializeClient, serializeJob, n } from "../lib/serialize";
 
 const router: IRouter = Router();
+
+router.use(requireAuth);
 
 router.get("/clients", async (req, res): Promise<void> => {
   const query = ListClientsQueryParams.safeParse(req.query);
@@ -19,17 +23,16 @@ router.get("/clients", async (req, res): Promise<void> => {
     res.status(400).json({ error: query.error.message });
     return;
   }
-
-  let clientsQuery = db.select().from(clientsTable).$dynamic();
+  const conds = [eq(clientsTable.companyId, req.companyId!)];
   if (query.data.search) {
-    clientsQuery = clientsQuery.where(ilike(clientsTable.name, `%${query.data.search}%`));
+    conds.push(ilike(clientsTable.name, `%${query.data.search}%`));
   }
-
-  const clients = await clientsQuery.orderBy(clientsTable.name);
-  res.json(clients.map(c => ({
-    ...c,
-    createdAt: c.createdAt.toISOString(),
-  })));
+  const clients = await db
+    .select()
+    .from(clientsTable)
+    .where(and(...conds))
+    .orderBy(clientsTable.name);
+  res.json(clients.map(serializeClient));
 });
 
 router.post("/clients", async (req, res): Promise<void> => {
@@ -38,8 +41,11 @@ router.post("/clients", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [client] = await db.insert(clientsTable).values(parsed.data).returning();
-  res.status(201).json({ ...client, createdAt: client.createdAt.toISOString() });
+  const [client] = await db
+    .insert(clientsTable)
+    .values({ ...parsed.data, companyId: req.companyId! })
+    .returning();
+  res.status(201).json(serializeClient(client));
 });
 
 router.get("/clients/:id", async (req, res): Promise<void> => {
@@ -48,12 +54,20 @@ router.get("/clients/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [client] = await db.select().from(clientsTable).where(eq(clientsTable.id, params.data.id));
+  const [client] = await db
+    .select()
+    .from(clientsTable)
+    .where(
+      and(
+        eq(clientsTable.id, params.data.id),
+        eq(clientsTable.companyId, req.companyId!),
+      ),
+    );
   if (!client) {
-    res.status(404).json({ error: "Client not found" });
+    res.status(404).json({ error: "Customer not found" });
     return;
   }
-  res.json({ ...client, createdAt: client.createdAt.toISOString() });
+  res.json(serializeClient(client));
 });
 
 router.patch("/clients/:id", async (req, res): Promise<void> => {
@@ -70,13 +84,18 @@ router.patch("/clients/:id", async (req, res): Promise<void> => {
   const [client] = await db
     .update(clientsTable)
     .set(parsed.data)
-    .where(eq(clientsTable.id, params.data.id))
+    .where(
+      and(
+        eq(clientsTable.id, params.data.id),
+        eq(clientsTable.companyId, req.companyId!),
+      ),
+    )
     .returning();
   if (!client) {
-    res.status(404).json({ error: "Client not found" });
+    res.status(404).json({ error: "Customer not found" });
     return;
   }
-  res.json({ ...client, createdAt: client.createdAt.toISOString() });
+  res.json(serializeClient(client));
 });
 
 router.delete("/clients/:id", async (req, res): Promise<void> => {
@@ -85,9 +104,17 @@ router.delete("/clients/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [client] = await db.delete(clientsTable).where(eq(clientsTable.id, params.data.id)).returning();
+  const [client] = await db
+    .delete(clientsTable)
+    .where(
+      and(
+        eq(clientsTable.id, params.data.id),
+        eq(clientsTable.companyId, req.companyId!),
+      ),
+    )
+    .returning();
   if (!client) {
-    res.status(404).json({ error: "Client not found" });
+    res.status(404).json({ error: "Customer not found" });
     return;
   }
   res.sendStatus(204);
@@ -102,24 +129,23 @@ router.get("/clients/:id/history", async (req, res): Promise<void> => {
   const jobs = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.clientId, params.data.id))
-    .orderBy(jobsTable.createdAt);
+    .where(
+      and(
+        eq(jobsTable.clientId, params.data.id),
+        eq(jobsTable.companyId, req.companyId!),
+      ),
+    )
+    .orderBy(desc(jobsTable.createdAt));
 
-  const totalRevenue = jobs.reduce((sum, j) => sum + parseFloat(j.estimatedValue ?? "0"), 0);
-  const completedJobs = jobs.filter(j => j.status === "completed").length;
+  const totalRevenue = jobs.reduce((sum, j) => sum + n(j.estimatedValue), 0);
+  const completedJobs = jobs.filter((j) => j.status === "paid").length;
 
   res.json({
     clientId: params.data.id,
     totalJobs: jobs.length,
     completedJobs,
     totalRevenue,
-    jobs: jobs.map(j => ({
-      ...j,
-      clientName: null,
-      estimatedValue: j.estimatedValue ? parseFloat(j.estimatedValue) : null,
-      actualCost: j.actualCost ? parseFloat(j.actualCost) : null,
-      createdAt: j.createdAt.toISOString(),
-    })),
+    jobs: jobs.map((j) => serializeJob(j)),
   });
 });
 

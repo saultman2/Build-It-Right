@@ -1,155 +1,239 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, and } from "drizzle-orm";
-import { db, materialsTable, supplierPricesTable } from "@workspace/db";
+import { eq, and, asc } from "drizzle-orm";
 import {
-  ListMaterialsQueryParams,
-  GetMaterialParams,
-  CreateMaterialBody,
-  UpdateMaterialParams,
-  UpdateMaterialBody,
-  DeleteMaterialParams,
-  GetMaterialPricesParams,
-  AddMaterialPriceParams,
-  AddMaterialPriceBody,
+  db,
+  jobsTable,
+  materialListsTable,
+  materialItemsTable,
+} from "@workspace/db";
+import {
+  GetJobMaterialListParams,
+  UpdateJobMaterialListParams,
+  UpdateJobMaterialListBody,
+  CreateMaterialItemParams,
+  CreateMaterialItemBody,
+  UpdateMaterialItemParams,
+  UpdateMaterialItemBody,
+  DeleteMaterialItemParams,
 } from "@workspace/api-zod";
+import { requireAuth } from "../lib/auth";
+import { serializeMaterialItem, n, toNumStr } from "../lib/serialize";
 
 const router: IRouter = Router();
 
-function formatMaterial(m: typeof materialsTable.$inferSelect) {
-  return {
-    ...m,
-    basePrice: parseFloat(m.basePrice ?? "0"),
-    createdAt: m.createdAt.toISOString(),
-  };
-}
+router.use(requireAuth);
 
-function formatSupplierPrice(sp: typeof supplierPricesTable.$inferSelect) {
-  return {
-    ...sp,
-    price: parseFloat(sp.price ?? "0"),
-    updatedAt: sp.updatedAt.toISOString(),
-  };
-}
-
-router.get("/materials", async (req, res): Promise<void> => {
-  const query = ListMaterialsQueryParams.safeParse(req.query);
-  if (!query.success) {
-    res.status(400).json({ error: query.error.message });
-    return;
-  }
-
-  const conditions = [];
-  if (query.data.category) conditions.push(eq(materialsTable.category, query.data.category));
-  if (query.data.search) conditions.push(ilike(materialsTable.name, `%${query.data.search}%`));
-
-  const materials = await db
+async function getOrCreateList(companyId: number, jobId: number) {
+  const [existing] = await db
     .select()
-    .from(materialsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(materialsTable.category, materialsTable.name);
-
-  res.json(materials.map(formatMaterial));
-});
-
-router.post("/materials", async (req, res): Promise<void> => {
-  const parsed = CreateMaterialBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const [material] = await db.insert(materialsTable).values({
-    ...parsed.data,
-    basePrice: parsed.data.basePrice?.toString() ?? "0",
-  }).returning();
-  res.status(201).json(formatMaterial(material));
-});
-
-router.get("/materials/:id", async (req, res): Promise<void> => {
-  const params = GetMaterialParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const [material] = await db.select().from(materialsTable).where(eq(materialsTable.id, params.data.id));
-  if (!material) {
-    res.status(404).json({ error: "Material not found" });
-    return;
-  }
-  res.json(formatMaterial(material));
-});
-
-router.patch("/materials/:id", async (req, res): Promise<void> => {
-  const params = UpdateMaterialParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const parsed = UpdateMaterialBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const updateData: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.basePrice !== undefined) updateData.basePrice = parsed.data.basePrice.toString();
-  const [material] = await db
-    .update(materialsTable)
-    .set(updateData)
-    .where(eq(materialsTable.id, params.data.id))
+    .from(materialListsTable)
+    .where(
+      and(
+        eq(materialListsTable.jobId, jobId),
+        eq(materialListsTable.companyId, companyId),
+      ),
+    );
+  if (existing) return existing;
+  const [created] = await db
+    .insert(materialListsTable)
+    .values({ companyId, jobId })
     .returning();
-  if (!material) {
-    res.status(404).json({ error: "Material not found" });
-    return;
-  }
-  res.json(formatMaterial(material));
-});
+  return created;
+}
 
-router.delete("/materials/:id", async (req, res): Promise<void> => {
-  const params = DeleteMaterialParams.safeParse(req.params);
+async function listDetail(companyId: number, jobId: number) {
+  const list = await getOrCreateList(companyId, jobId);
+  const items = await db
+    .select()
+    .from(materialItemsTable)
+    .where(eq(materialItemsTable.materialListId, list.id))
+    .orderBy(asc(materialItemsTable.sortOrder), asc(materialItemsTable.id));
+
+  const subtotal = items.reduce((s, i) => s + n(i.lineTotal), 0);
+  const taxableSubtotal = items
+    .filter((i) => i.taxable)
+    .reduce((s, i) => s + n(i.lineTotal), 0);
+  const markupSubtotal = items
+    .filter((i) => i.markup)
+    .reduce((s, i) => s + n(i.lineTotal), 0);
+
+  return {
+    id: list.id,
+    jobId: list.jobId,
+    name: list.name,
+    notes: list.notes,
+    items: items.map(serializeMaterialItem),
+    subtotal,
+    taxableSubtotal,
+    markupSubtotal,
+  };
+}
+
+async function ensureJob(companyId: number, jobId: number) {
+  const [job] = await db
+    .select({ id: jobsTable.id })
+    .from(jobsTable)
+    .where(and(eq(jobsTable.id, jobId), eq(jobsTable.companyId, companyId)));
+  return !!job;
+}
+
+router.get(
+  "/jobs/:jobId/material-list",
+  async (req, res): Promise<void> => {
+    const params = GetJobMaterialListParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    if (!(await ensureJob(req.companyId!, params.data.jobId))) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
+    res.json(await listDetail(req.companyId!, params.data.jobId));
+  },
+);
+
+router.patch(
+  "/jobs/:jobId/material-list",
+  async (req, res): Promise<void> => {
+    const params = UpdateJobMaterialListParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const parsed = UpdateJobMaterialListBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    if (!(await ensureJob(req.companyId!, params.data.jobId))) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
+    const list = await getOrCreateList(req.companyId!, params.data.jobId);
+    await db
+      .update(materialListsTable)
+      .set(parsed.data)
+      .where(eq(materialListsTable.id, list.id));
+    res.json(await listDetail(req.companyId!, params.data.jobId));
+  },
+);
+
+router.post(
+  "/jobs/:jobId/material-list/items",
+  async (req, res): Promise<void> => {
+    const params = CreateMaterialItemParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const parsed = CreateMaterialItemBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    if (!(await ensureJob(req.companyId!, params.data.jobId))) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
+    const list = await getOrCreateList(req.companyId!, params.data.jobId);
+    const d = parsed.data;
+    const qty = n(d.quantity ?? 0);
+    const price = n(d.unitPrice ?? 0);
+    const [item] = await db
+      .insert(materialItemsTable)
+      .values({
+        companyId: req.companyId!,
+        materialListId: list.id,
+        name: d.name,
+        description: d.description,
+        quantity: toNumStr(d.quantity),
+        unit: d.unit,
+        unitPrice: toNumStr(d.unitPrice),
+        lineTotal: String(qty * price),
+        supplier: d.supplier,
+        sku: d.sku,
+        category: d.category,
+        taxable: d.taxable,
+        markup: d.markup,
+        notes: d.notes,
+        sortOrder: d.sortOrder,
+      })
+      .returning();
+    res.status(201).json(serializeMaterialItem(item));
+  },
+);
+
+router.patch("/material-items/:id", async (req, res): Promise<void> => {
+  const params = UpdateMaterialItemParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  await db.delete(supplierPricesTable).where(eq(supplierPricesTable.materialId, params.data.id));
-  const [material] = await db.delete(materialsTable).where(eq(materialsTable.id, params.data.id)).returning();
-  if (!material) {
-    res.status(404).json({ error: "Material not found" });
+  const parsed = UpdateMaterialItemBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [existing] = await db
+    .select()
+    .from(materialItemsTable)
+    .where(
+      and(
+        eq(materialItemsTable.id, params.data.id),
+        eq(materialItemsTable.companyId, req.companyId!),
+      ),
+    );
+  if (!existing) {
+    res.status(404).json({ error: "Material item not found" });
+    return;
+  }
+  const d = parsed.data;
+  const qty = d.quantity !== undefined ? n(d.quantity) : n(existing.quantity);
+  const price =
+    d.unitPrice !== undefined ? n(d.unitPrice) : n(existing.unitPrice);
+  const [item] = await db
+    .update(materialItemsTable)
+    .set({
+      name: d.name,
+      description: d.description,
+      quantity: toNumStr(d.quantity),
+      unit: d.unit,
+      unitPrice: toNumStr(d.unitPrice),
+      lineTotal: String(qty * price),
+      supplier: d.supplier,
+      sku: d.sku,
+      category: d.category,
+      taxable: d.taxable,
+      markup: d.markup,
+      notes: d.notes,
+      sortOrder: d.sortOrder,
+    })
+    .where(eq(materialItemsTable.id, params.data.id))
+    .returning();
+  res.json(serializeMaterialItem(item));
+});
+
+router.delete("/material-items/:id", async (req, res): Promise<void> => {
+  const params = DeleteMaterialItemParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [item] = await db
+    .delete(materialItemsTable)
+    .where(
+      and(
+        eq(materialItemsTable.id, params.data.id),
+        eq(materialItemsTable.companyId, req.companyId!),
+      ),
+    )
+    .returning();
+  if (!item) {
+    res.status(404).json({ error: "Material item not found" });
     return;
   }
   res.sendStatus(204);
-});
-
-router.get("/materials/:id/prices", async (req, res): Promise<void> => {
-  const params = GetMaterialPricesParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const prices = await db
-    .select()
-    .from(supplierPricesTable)
-    .where(eq(supplierPricesTable.materialId, params.data.id))
-    .orderBy(supplierPricesTable.price);
-  res.json(prices.map(formatSupplierPrice));
-});
-
-router.post("/materials/:id/prices", async (req, res): Promise<void> => {
-  const params = AddMaterialPriceParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const parsed = AddMaterialPriceBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const [price] = await db.insert(supplierPricesTable).values({
-    ...parsed.data,
-    materialId: params.data.id,
-    price: parsed.data.price.toString(),
-    inStock: parsed.data.inStock ?? true,
-  }).returning();
-  res.status(201).json(formatSupplierPrice(price));
 });
 
 export default router;

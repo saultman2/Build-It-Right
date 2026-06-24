@@ -5,15 +5,13 @@
  * BuildPro Construction Business Manager API
  * OpenAPI spec version: 0.1.0
  */
-import type { EstimateInputStatus } from './estimateInputStatus';
 
 export interface EstimateInput {
-  jobId?: number;
-  clientId?: number;
-  /** @minLength 1 */
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  clientId?: number | null;
   title: string;
-  status?: EstimateInputStatus;
-  taxRate?: number;
-  notes?: string;
-  validUntil?: string;
+  /** If true and jobId set, copy material list items into the estimate. */
+  importMaterialList?: boolean;
 }

@@ -5,8 +5,12 @@
  * BuildPro Construction Business Manager API
  * OpenAPI spec version: 0.1.0
  */
+import type { SendEstimateInputChannel } from './sendEstimateInputChannel';
 
 export interface SendEstimateInput {
-  clientEmail: string;
-  message?: string;
+  channel: SendEstimateInputChannel;
+  /** @nullable */
+  to?: string | null;
+  /** @nullable */
+  message?: string | null;
 }

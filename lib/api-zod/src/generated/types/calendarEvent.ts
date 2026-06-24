@@ -5,22 +5,22 @@
  * BuildPro Construction Business Manager API
  * OpenAPI spec version: 0.1.0
  */
-import type { CalendarEventType } from './calendarEventType';
 
 export interface CalendarEvent {
   id: number;
   /** @nullable */
   jobId?: number | null;
   /** @nullable */
-  jobTitle?: string | null;
-  /** @nullable */
   clientId?: number | null;
+  /** @nullable */
+  jobTitle?: string | null;
   /** @nullable */
   clientName?: string | null;
   title: string;
-  type: CalendarEventType;
+  type: string;
   startDatetime: string;
-  endDatetime: string;
+  /** @nullable */
+  endDatetime?: string | null;
   allDay: boolean;
   /** @nullable */
   notes?: string | null;

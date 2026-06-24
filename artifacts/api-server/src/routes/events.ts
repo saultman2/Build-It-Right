@@ -1,29 +1,20 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { db, calendarEventsTable, jobsTable, clientsTable } from "@workspace/db";
 import {
   ListEventsQueryParams,
-  GetEventParams,
   CreateEventBody,
+  GetEventParams,
   UpdateEventParams,
   UpdateEventBody,
   DeleteEventParams,
 } from "@workspace/api-zod";
+import { requireAuth } from "../lib/auth";
+import { serializeEvent } from "../lib/serialize";
 
 const router: IRouter = Router();
 
-function formatEvent(
-  e: typeof calendarEventsTable.$inferSelect,
-  jobTitle?: string | null,
-  clientName?: string | null,
-) {
-  return {
-    ...e,
-    jobTitle: jobTitle ?? null,
-    clientName: clientName ?? null,
-    createdAt: e.createdAt.toISOString(),
-  };
-}
+router.use(requireAuth);
 
 router.get("/events", async (req, res): Promise<void> => {
   const query = ListEventsQueryParams.safeParse(req.query);
@@ -31,12 +22,9 @@ router.get("/events", async (req, res): Promise<void> => {
     res.status(400).json({ error: query.error.message });
     return;
   }
-
-  const conditions = [];
-  if (query.data.startDate) conditions.push(gte(calendarEventsTable.startDatetime, query.data.startDate));
-  if (query.data.endDate) conditions.push(lte(calendarEventsTable.endDatetime, query.data.endDate));
-  if (query.data.jobId) conditions.push(eq(calendarEventsTable.jobId, Number(query.data.jobId)));
-
+  const conds = [eq(calendarEventsTable.companyId, req.companyId!)];
+  if (query.data.jobId)
+    conds.push(eq(calendarEventsTable.jobId, query.data.jobId));
   const rows = await db
     .select({
       event: calendarEventsTable,
@@ -46,10 +34,16 @@ router.get("/events", async (req, res): Promise<void> => {
     .from(calendarEventsTable)
     .leftJoin(jobsTable, eq(calendarEventsTable.jobId, jobsTable.id))
     .leftJoin(clientsTable, eq(calendarEventsTable.clientId, clientsTable.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(calendarEventsTable.startDatetime);
-
-  res.json(rows.map(({ event, jobTitle, clientName }) => formatEvent(event, jobTitle, clientName)));
+    .where(and(...conds))
+    .orderBy(asc(calendarEventsTable.startDatetime));
+  res.json(
+    rows.map((r) =>
+      serializeEvent(r.event, {
+        jobTitle: r.jobTitle,
+        clientName: r.clientName,
+      }),
+    ),
+  );
 });
 
 router.post("/events", async (req, res): Promise<void> => {
@@ -58,11 +52,11 @@ router.post("/events", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [event] = await db.insert(calendarEventsTable).values({
-    ...parsed.data,
-    allDay: parsed.data.allDay ?? false,
-  }).returning();
-  res.status(201).json(formatEvent(event));
+  const [event] = await db
+    .insert(calendarEventsTable)
+    .values({ ...parsed.data, companyId: req.companyId! })
+    .returning();
+  res.status(201).json(serializeEvent(event));
 });
 
 router.get("/events/:id", async (req, res): Promise<void> => {
@@ -71,17 +65,20 @@ router.get("/events/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db
-    .select({ event: calendarEventsTable, jobTitle: jobsTable.title, clientName: clientsTable.name })
+  const [event] = await db
+    .select()
     .from(calendarEventsTable)
-    .leftJoin(jobsTable, eq(calendarEventsTable.jobId, jobsTable.id))
-    .leftJoin(clientsTable, eq(calendarEventsTable.clientId, clientsTable.id))
-    .where(eq(calendarEventsTable.id, params.data.id));
-  if (!row) {
+    .where(
+      and(
+        eq(calendarEventsTable.id, params.data.id),
+        eq(calendarEventsTable.companyId, req.companyId!),
+      ),
+    );
+  if (!event) {
     res.status(404).json({ error: "Event not found" });
     return;
   }
-  res.json(formatEvent(row.event, row.jobTitle, row.clientName));
+  res.json(serializeEvent(event));
 });
 
 router.patch("/events/:id", async (req, res): Promise<void> => {
@@ -98,13 +95,18 @@ router.patch("/events/:id", async (req, res): Promise<void> => {
   const [event] = await db
     .update(calendarEventsTable)
     .set(parsed.data)
-    .where(eq(calendarEventsTable.id, params.data.id))
+    .where(
+      and(
+        eq(calendarEventsTable.id, params.data.id),
+        eq(calendarEventsTable.companyId, req.companyId!),
+      ),
+    )
     .returning();
   if (!event) {
     res.status(404).json({ error: "Event not found" });
     return;
   }
-  res.json(formatEvent(event));
+  res.json(serializeEvent(event));
 });
 
 router.delete("/events/:id", async (req, res): Promise<void> => {
@@ -113,7 +115,15 @@ router.delete("/events/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [event] = await db.delete(calendarEventsTable).where(eq(calendarEventsTable.id, params.data.id)).returning();
+  const [event] = await db
+    .delete(calendarEventsTable)
+    .where(
+      and(
+        eq(calendarEventsTable.id, params.data.id),
+        eq(calendarEventsTable.companyId, req.companyId!),
+      ),
+    )
+    .returning();
   if (!event) {
     res.status(404).json({ error: "Event not found" });
     return;
