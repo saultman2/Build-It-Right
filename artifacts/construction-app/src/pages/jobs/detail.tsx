@@ -417,7 +417,7 @@ function MaterialsTab({ jobId, jobTitle, jobDescription, approvedEstimateId }: {
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <Tag className="w-4 h-4 text-emerald-600" /> Price hints
                   </div>
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setPriceHint(null)}><X className="w-3.5 h-3.5" /></Button>
+                  <Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => setPriceHint(null)}><X className="w-3.5 h-3.5" /></Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {d.historical.count > 0 ? (
@@ -551,7 +551,7 @@ function MaterialsTab({ jobId, jobTitle, jobDescription, approvedEstimateId }: {
                         <td className="px-4 py-2.5 text-right">{formatCurrency(Number(item.unitPrice ?? 0))}</td>
                         <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(Number(item.quantity ?? 0) * Number(item.unitPrice ?? 0))}</td>
                         <td className="px-2 py-2.5">
-                          <Button size="icon" variant="ghost" className="h-9 w-9 opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); handleDelete(item.id); }}>
+                          <Button size="icon" variant="ghost" className="h-11 w-11 opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); handleDelete(item.id); }}>
                             <Trash2 className="w-3.5 h-3.5 text-destructive" />
                           </Button>
                         </td>

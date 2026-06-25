@@ -132,7 +132,7 @@ export function InvoiceAIChat({
           disabled={design.isPending}
           className="h-9 text-sm border-0 shadow-none focus-visible:ring-0 px-1"
         />
-        <Button type="submit" size="sm" disabled={design.isPending || !input.trim()} className="h-8 w-8 p-0 shrink-0">
+        <Button type="submit" size="sm" disabled={design.isPending || !input.trim()} className="h-11 w-11 p-0 shrink-0">
           {design.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </form>

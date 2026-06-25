@@ -130,11 +130,11 @@ export default function CalendarPage() {
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
           <div className="flex items-center rounded-md border bg-background shadow-sm">
-            <Button variant="ghost" size="icon" onClick={prevMonth} className="rounded-none border-r h-9 w-9">
+            <Button variant="ghost" size="icon" onClick={prevMonth} className="rounded-none border-r h-11 w-11">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" onClick={today} className="rounded-none font-medium px-4 h-9">Today</Button>
-            <Button variant="ghost" size="icon" onClick={nextMonth} className="rounded-none border-l h-9 w-9">
+            <Button variant="ghost" onClick={today} className="rounded-none font-medium px-4 h-11">Today</Button>
+            <Button variant="ghost" size="icon" onClick={nextMonth} className="rounded-none border-l h-11 w-11">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

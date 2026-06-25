@@ -370,7 +370,7 @@ export default function EditInvoicePage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Line Items</Label>
-              <Button variant="ghost" size="sm" onClick={addLineItem} className="h-7 gap-1 text-xs">
+              <Button variant="ghost" size="sm" onClick={addLineItem} className="h-9 gap-1 text-xs">
                 <Plus className="h-3 w-3" /> Add
               </Button>
             </div>
@@ -385,7 +385,7 @@ export default function EditInvoicePage() {
                       placeholder="Description"
                       className="flex-1 h-8 text-sm"
                     />
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0" onClick={() => removeLineItem(item.id)}>
+                    <Button variant="ghost" size="sm" className="h-11 w-11 p-0 text-muted-foreground hover:text-destructive shrink-0" onClick={() => removeLineItem(item.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
