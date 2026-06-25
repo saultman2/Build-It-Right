@@ -33,9 +33,9 @@ const nav = [
 // 5 most common actions for the mobile bottom-tab bar
 const bottomNav = [
   { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/clients", label: "Clients", icon: Users },
-  { href: "/quotes/quick", label: "Quote", icon: Zap },
   { href: "/jobs", label: "Projects", icon: HardHat },
+  { href: "/quotes/quick", label: "Quote", icon: Zap },
+  { href: "/crew", label: "Crew", icon: UsersRound },
   { href: "/finances", label: "Finances", icon: Wallet },
 ];
 

@@ -381,7 +381,8 @@ function NewQuotePanel({ onClose, onSaved, initialJobId }: { onClose: () => void
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{section.label}</h3>
                   <div className="flex-1 h-px bg-border" />
                 </div>
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full min-w-[480px] text-sm">
                   <thead>
                     <tr className="text-muted-foreground text-xs">
                       <th className="text-left pb-1.5 w-1/2">Description</th>
@@ -431,6 +432,7 @@ function NewQuotePanel({ onClose, onSaved, initialJobId }: { onClose: () => void
                     })}
                   </tbody>
                 </table>
+                </div>
                 <div className="flex justify-end mt-1">
                   <span className="text-sm text-muted-foreground">{section.label} subtotal: <span className="font-medium text-foreground">{formatCurrency(section.subtotal)}</span></span>
                 </div>
