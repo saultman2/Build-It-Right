@@ -160,7 +160,7 @@ function JobEstimatesCard({ jobId }: { jobId: number }) {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7"
+                        className="h-11 w-11"
                         title="Edit estimate"
                         onClick={() => (window.location.href = `/jobs/${jobId}/estimate?estimateId=${est.id}`)}
                       >
@@ -170,7 +170,7 @@ function JobEstimatesCard({ jobId }: { jobId: number }) {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 px-2 text-xs"
+                          className="h-9 px-3 text-xs"
                           onClick={() => handleApprove(est.id)}
                           disabled={approvingId === est.id}
                         >
@@ -185,7 +185,7 @@ function JobEstimatesCard({ jobId }: { jobId: number }) {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        className="h-11 w-11 text-destructive hover:text-destructive"
                         title="Delete estimate"
                         disabled={deletingId === est.id}
                         onClick={() => handleDelete(est.id, est.title)}
@@ -532,9 +532,9 @@ function MaterialsTab({ jobId, jobTitle, jobDescription, approvedEstimateId }: {
                         <td className="px-4 py-1 text-right text-muted-foreground">{formatCurrency((parseFloat(editRow.quantity) || 0) * (parseFloat(editRow.unitPrice) || 0))}</td>
                         <td className="px-2 py-1">
                           <div className="flex gap-1">
-                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Check price" onClick={() => handleCheckPrice(item.id, editRow.name, editRow.unit)}><Tag className="w-3.5 h-3.5 text-emerald-600" /></Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleSaveEdit(item.id)}><Check className="w-3.5 h-3.5 text-green-600" /></Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingId(null)}><X className="w-3.5 h-3.5" /></Button>
+                            <Button size="icon" variant="ghost" className="h-9 w-9" title="Check price" onClick={() => handleCheckPrice(item.id, editRow.name, editRow.unit)}><Tag className="w-3.5 h-3.5 text-emerald-600" /></Button>
+                            <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => handleSaveEdit(item.id)}><Check className="w-3.5 h-3.5 text-green-600" /></Button>
+                            <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => setEditingId(null)}><X className="w-3.5 h-3.5" /></Button>
                           </div>
                         </td>
                       </tr>
@@ -551,7 +551,7 @@ function MaterialsTab({ jobId, jobTitle, jobDescription, approvedEstimateId }: {
                         <td className="px-4 py-2.5 text-right">{formatCurrency(Number(item.unitPrice ?? 0))}</td>
                         <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(Number(item.quantity ?? 0) * Number(item.unitPrice ?? 0))}</td>
                         <td className="px-2 py-2.5">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); handleDelete(item.id); }}>
+                          <Button size="icon" variant="ghost" className="h-9 w-9 opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); handleDelete(item.id); }}>
                             <Trash2 className="w-3.5 h-3.5 text-destructive" />
                           </Button>
                         </td>
@@ -568,9 +568,9 @@ function MaterialsTab({ jobId, jobTitle, jobDescription, approvedEstimateId }: {
                       <td className="px-4 py-1 text-right text-muted-foreground">{formatCurrency((parseFloat(newRow.quantity) || 0) * (parseFloat(newRow.unitPrice) || 0))}</td>
                       <td className="px-2 py-1">
                         <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Check price" onClick={() => handleCheckPrice("new", newRow.name, newRow.unit)}><Tag className="w-3.5 h-3.5 text-emerald-600" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleAddItem} disabled={!newRow.name.trim()}><Check className="w-3.5 h-3.5 text-green-600" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setAddingRow(false); setNewRow(EMPTY_NEW_ITEM); }}><X className="w-3.5 h-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-9 w-9" title="Check price" onClick={() => handleCheckPrice("new", newRow.name, newRow.unit)}><Tag className="w-3.5 h-3.5 text-emerald-600" /></Button>
+                          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={handleAddItem} disabled={!newRow.name.trim()}><Check className="w-3.5 h-3.5 text-green-600" /></Button>
+                          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => { setAddingRow(false); setNewRow(EMPTY_NEW_ITEM); }}><X className="w-3.5 h-3.5" /></Button>
                         </div>
                       </td>
                     </tr>

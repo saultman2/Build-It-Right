@@ -702,13 +702,14 @@ export default function QuotesPage() {
                   <p className="text-sm mt-1">Click "New Estimate" to generate your first AI quote.</p>
                 </div>
               ) : (
+                <div className="overflow-x-auto no-scrollbar">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/30">
                       <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">Name</th>
-                      <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">Client</th>
+                      <th className="hidden sm:table-cell text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">Client</th>
                       <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">Amount</th>
-                      <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">Modified</th>
+                      <th className="hidden md:table-cell text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">Modified</th>
                       <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">Status</th>
                       <th className="px-4 py-3"></th>
                     </tr>
@@ -717,9 +718,9 @@ export default function QuotesPage() {
                     {filtered.map(est => (
                       <tr key={est.id} className="hover:bg-muted/20">
                         <td className="px-4 py-3 font-medium">{est.title}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{est.clientName || "Not Assigned"}</td>
+                        <td className="hidden sm:table-cell px-4 py-3 text-muted-foreground">{est.clientName || "Not Assigned"}</td>
                         <td className="px-4 py-3">{formatCurrency(est.total)}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{formatDate(est.createdAt)}</td>
+                        <td className="hidden md:table-cell px-4 py-3 text-muted-foreground">{formatDate(est.createdAt)}</td>
                         <td className="px-4 py-3">{estimateStatusBadge(est.status)}</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -750,6 +751,7 @@ export default function QuotesPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </Card>
