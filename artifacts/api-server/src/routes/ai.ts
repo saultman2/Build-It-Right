@@ -24,12 +24,12 @@ const SuggestMaterialsBody = z.object({
 
 const lineItemSchema = z.object({
   description: z.string(),
-  qty: z.number().optional(),
-  unit: z.string().optional(),
-  unitPrice: z.number().optional(),
-  hours: z.number().optional(),
-  hourlyRate: z.number().optional(),
-  section: z.enum(["labor", "material", "equipment", "other"]),
+  qty: z.number().nullish(),
+  unit: z.string().nullish(),
+  unitPrice: z.number().nullish(),
+  hours: z.number().nullish(),
+  hourlyRate: z.number().nullish(),
+  section: z.enum(["labor", "material", "equipment", "other"]).catch("other"),
 });
 
 const aiResponseSchema = z.object({

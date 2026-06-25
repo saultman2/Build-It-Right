@@ -66,6 +66,7 @@ function NewQuotePanel({ onClose, onSaved }: { onClose: () => void; onSaved: () 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedJob = jobs?.find(j => j.id === jobId);
+  const selectedClient = clients?.find(c => c.id === clientId);
   const zipCode = company?.zipCode || undefined;
 
   const handlePhotoAdd = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,6 +130,13 @@ function NewQuotePanel({ onClose, onSaved }: { onClose: () => void; onSaved: () 
 
   const total = aiItems.reduce((s, item) => s + lineTotal(item), 0);
 
+  const laborItems = aiItems.filter(i => i.section === "labor");
+  const materialItems = aiItems.filter(i => i.section === "material");
+  const otherItems = aiItems.filter(i => !["labor", "material"].includes(i.section));
+  const laborTotal = laborItems.reduce((s, i) => s + (i.hours || 0) * (i.hourlyRate || 0), 0);
+  const materialTotal = materialItems.reduce((s, i) => s + (i.qty || 0) * (i.unitPrice || 0), 0);
+  const otherTotal = otherItems.reduce((s, i) => s + lineTotal(i), 0);
+
   const handleSave = async () => {
     if (!clientId && !jobId) {
       toast({ title: "Please select a job or client", variant: "destructive" });
@@ -151,7 +159,7 @@ function NewQuotePanel({ onClose, onSaved }: { onClose: () => void; onSaved: () 
             section: item.section,
             description: item.description,
             quantity: item.section !== "labor" ? (item.qty ?? 1) : undefined,
-            unit: item.unit,
+            unit: item.unit ?? undefined,
             unitPrice: item.section !== "labor" ? (item.unitPrice ?? 0) : undefined,
             hours: item.section === "labor" ? (item.hours ?? 0) : undefined,
             hourlyRate: item.section === "labor" ? (item.hourlyRate ?? 0) : undefined,
@@ -159,7 +167,7 @@ function NewQuotePanel({ onClose, onSaved }: { onClose: () => void; onSaved: () 
         });
       }
 
-      toast({ title: "Quote saved as estimate" });
+      toast({ title: "Estimate saved", description: "AI-generated quote saved. Review before sending to client." });
       onSaved();
     } catch (err: unknown) {
       toast({ title: "Save failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
@@ -169,16 +177,23 @@ function NewQuotePanel({ onClose, onSaved }: { onClose: () => void; onSaved: () 
   };
 
   if (step === "result") {
+    const sections = [
+      { label: "Labor", items: laborItems, subtotal: laborTotal, qtyLabel: "Hrs", rateLabel: "Rate/hr" },
+      { label: "Materials", items: materialItems, subtotal: materialTotal, qtyLabel: "Qty", rateLabel: "Unit Price" },
+      { label: "Other", items: otherItems, subtotal: otherTotal, qtyLabel: "Qty/Hrs", rateLabel: "Rate" },
+    ].filter(s => s.items.length > 0);
+
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
+      <div className="space-y-4">
+        {/* Toolbar */}
+        <div className="flex items-center gap-3 flex-wrap">
           <Button variant="ghost" size="sm" onClick={() => setStep("form")}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
           <Input
             value={estimateTitle}
             onChange={e => setEstimateTitle(e.target.value)}
-            className="text-lg font-semibold h-auto py-1 px-2 border-none shadow-none focus-visible:ring-0 bg-transparent"
+            className="flex-1 text-lg font-semibold h-9 py-1 px-2 max-w-xs"
           />
           <div className="ml-auto flex gap-2">
             <Button variant="outline" size="sm" onClick={() => window.print()}>
@@ -186,101 +201,171 @@ function NewQuotePanel({ onClose, onSaved }: { onClose: () => void; onSaved: () 
             </Button>
             <Button size="sm" onClick={handleSave} disabled={isSaving}>
               {isSaving ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
-              Save Quote
+              Save as Estimate
             </Button>
           </div>
         </div>
 
+        {/* Disclaimer */}
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-2.5 text-amber-800">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <p className="text-sm">{disclaimer}</p>
         </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+        {/* Professional Quote Document */}
+        <Card className="print:shadow-none print:border-0">
+          <CardContent className="p-6 sm:p-8 space-y-6">
+            {/* Header: company + client info */}
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-6 pb-6 border-b">
               <div>
-                {selectedJob && <div className="text-sm text-muted-foreground">Project: {selectedJob.title}</div>}
-                {company?.name && <div className="text-sm font-medium">{company.name}</div>}
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-xl font-bold text-foreground">{company?.name || "Your Company"}</h2>
+                  <Badge variant="outline" className="text-xs text-purple-600 border-purple-300 bg-purple-50">
+                    <Sparkles className="w-2.5 h-2.5 mr-1" /> AI Draft
+                  </Badge>
+                </div>
+                {company?.address && <div className="text-sm text-muted-foreground">{company.address}</div>}
+                {company?.city && <div className="text-sm text-muted-foreground">{company.city}{company.state ? `, ${company.state}` : ""} {company.zipCode || ""}</div>}
+                {company?.phone && <div className="text-sm text-muted-foreground">{company.phone}</div>}
+                {company?.email && <div className="text-sm text-muted-foreground">{company.email}</div>}
               </div>
-              <Badge variant="outline" className="text-xs">AI Generated</Badge>
+              <div className="text-sm sm:text-right space-y-1">
+                <div className="font-semibold text-base">ESTIMATE</div>
+                <div className="text-muted-foreground">Date: {new Date().toLocaleDateString()}</div>
+                {selectedClient && (
+                  <div className="mt-2 pt-2 border-t sm:border-t-0 sm:mt-0 sm:pt-0">
+                    <div className="font-medium">Bill To:</div>
+                    <div>{selectedClient.name}</div>
+                    {selectedClient.address && <div className="text-muted-foreground">{selectedClient.address}</div>}
+                    {selectedClient.email && <div className="text-muted-foreground">{selectedClient.email}</div>}
+                    {selectedClient.phone && <div className="text-muted-foreground">{selectedClient.phone}</div>}
+                  </div>
+                )}
+                {selectedJob && (
+                  <div className="mt-2">
+                    <div className="font-medium">Project:</div>
+                    <div>{selectedJob.title}</div>
+                    {selectedJob.address && <div className="text-muted-foreground">{selectedJob.address}</div>}
+                  </div>
+                )}
+              </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-muted-foreground text-xs uppercase tracking-wider">
-                    <th className="text-left pb-2 w-1/2">Description</th>
-                    <th className="text-left pb-2">Section</th>
-                    <th className="text-right pb-2">Qty/Hrs</th>
-                    <th className="text-right pb-2">Rate</th>
-                    <th className="text-right pb-2">Total</th>
-                    <th className="pb-2 w-8"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {aiItems.map((item, idx) => (
-                    <tr key={idx} className="group">
-                      <td className="py-2 pr-2">
-                        <Input
-                          value={item.description}
-                          onChange={e => updateItem(idx, "description", e.target.value)}
-                          className="h-7 text-sm border-transparent hover:border-input focus:border-input bg-transparent"
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <Select value={item.section} onValueChange={v => updateItem(idx, "section", v)}>
-                          <SelectTrigger className="h-7 text-xs w-24">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="labor">Labor</SelectItem>
-                            <SelectItem value="material">Material</SelectItem>
-                            <SelectItem value="equipment">Equipment</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </td>
-                      <td className="py-2 pr-2 text-right">
-                        <Input
-                          type="number"
-                          value={item.section === "labor" ? (item.hours ?? "") : (item.qty ?? "")}
-                          onChange={e => updateItem(idx, item.section === "labor" ? "hours" : "qty", parseFloat(e.target.value) || 0)}
-                          className="h-7 text-sm text-right border-transparent hover:border-input focus:border-input bg-transparent w-16"
-                        />
-                      </td>
-                      <td className="py-2 pr-2 text-right">
-                        <Input
-                          type="number"
-                          value={item.section === "labor" ? (item.hourlyRate ?? "") : (item.unitPrice ?? "")}
-                          onChange={e => updateItem(idx, item.section === "labor" ? "hourlyRate" : "unitPrice", parseFloat(e.target.value) || 0)}
-                          className="h-7 text-sm text-right border-transparent hover:border-input focus:border-input bg-transparent w-20"
-                        />
-                      </td>
-                      <td className="py-2 text-right font-medium">{formatCurrency(lineTotal(item))}</td>
-                      <td className="py-2 pl-1">
-                        <button onClick={() => removeItem(idx)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
+
+            {/* Mode toggle for post-generation section visibility */}
+            <div className="flex gap-2 flex-wrap">
+              <span className="text-sm text-muted-foreground self-center mr-1">Showing:</span>
+              <button
+                onClick={() => setMode("labor_and_materials")}
+                className={`text-xs px-3 py-1 rounded-full border transition-colors ${mode === "labor_and_materials" ? "bg-[#2563eb] text-white border-[#2563eb]" : "border-border text-muted-foreground hover:border-foreground/30"}`}
+              >
+                Labor + Materials
+              </button>
+              <button
+                onClick={() => setMode("labor_only")}
+                className={`text-xs px-3 py-1 rounded-full border transition-colors ${mode === "labor_only" ? "bg-[#2563eb] text-white border-[#2563eb]" : "border-border text-muted-foreground hover:border-foreground/30"}`}
+              >
+                Labor Only
+              </button>
+            </div>
+
+            {/* Line items by section */}
+            {sections
+              .filter(s => mode === "labor_only" ? s.label === "Labor" : true)
+              .map(section => (
+              <div key={section.label}>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{section.label}</h3>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-muted-foreground text-xs">
+                      <th className="text-left pb-1.5 w-1/2">Description</th>
+                      <th className="text-right pb-1.5 w-16">{section.qtyLabel}</th>
+                      <th className="text-right pb-1.5 w-24">{section.rateLabel}</th>
+                      <th className="text-right pb-1.5 w-24">Amount</th>
+                      <th className="pb-1.5 w-6" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y">
+                    {section.items.map((item, _) => {
+                      const globalIdx = aiItems.indexOf(item);
+                      return (
+                        <tr key={globalIdx} className="group">
+                          <td className="py-1.5 pr-2">
+                            <Input
+                              value={item.description}
+                              onChange={e => updateItem(globalIdx, "description", e.target.value)}
+                              className="h-7 text-sm border-transparent hover:border-input focus:border-input bg-transparent p-1"
+                            />
+                          </td>
+                          <td className="py-1.5 pr-2 text-right">
+                            <Input
+                              type="number"
+                              value={item.section === "labor" ? (item.hours ?? "") : (item.qty ?? "")}
+                              onChange={e => updateItem(globalIdx, item.section === "labor" ? "hours" : "qty", parseFloat(e.target.value) || 0)}
+                              className="h-7 text-sm text-right border-transparent hover:border-input focus:border-input bg-transparent w-16 ml-auto p-1"
+                            />
+                          </td>
+                          <td className="py-1.5 pr-2 text-right">
+                            <Input
+                              type="number"
+                              value={item.section === "labor" ? (item.hourlyRate ?? "") : (item.unitPrice ?? "")}
+                              onChange={e => updateItem(globalIdx, item.section === "labor" ? "hourlyRate" : "unitPrice", parseFloat(e.target.value) || 0)}
+                              className="h-7 text-sm text-right border-transparent hover:border-input focus:border-input bg-transparent w-24 ml-auto p-1"
+                            />
+                          </td>
+                          <td className="py-1.5 text-right font-medium tabular-nums">{formatCurrency(lineTotal(item))}</td>
+                          <td className="py-1.5 pl-1">
+                            <button onClick={() => removeItem(globalIdx)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <div className="flex justify-end mt-1">
+                  <span className="text-sm text-muted-foreground">{section.label} subtotal: <span className="font-medium text-foreground">{formatCurrency(section.subtotal)}</span></span>
+                </div>
+              </div>
+            ))}
 
             <button
-              onClick={() => setAiItems(prev => [...prev, { description: "New item", qty: 1, unit: "ea", unitPrice: 0, section: "material" }])}
+              onClick={() => setAiItems(prev => [...prev, { description: "New item", qty: 1, unit: "ea", unitPrice: 0, section: mode === "labor_only" ? "labor" : "material" }])}
               className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" /> Add item
+              <Plus className="w-3.5 h-3.5" /> Add line item
             </button>
 
-            <div className="border-t pt-3 flex justify-end">
-              <div className="text-right">
-                <div className="text-muted-foreground text-sm">Total</div>
-                <div className="text-2xl font-bold">{formatCurrency(total)}</div>
+            {/* Total summary */}
+            <div className="border-t pt-4">
+              <div className="flex flex-col items-end gap-1.5 text-sm">
+                {laborTotal > 0 && (
+                  <div className="flex gap-8 text-muted-foreground">
+                    <span>Labor</span>
+                    <span className="tabular-nums w-28 text-right">{formatCurrency(laborTotal)}</span>
+                  </div>
+                )}
+                {materialTotal > 0 && mode !== "labor_only" && (
+                  <div className="flex gap-8 text-muted-foreground">
+                    <span>Materials</span>
+                    <span className="tabular-nums w-28 text-right">{formatCurrency(materialTotal)}</span>
+                  </div>
+                )}
+                {otherTotal > 0 && mode !== "labor_only" && (
+                  <div className="flex gap-8 text-muted-foreground">
+                    <span>Other</span>
+                    <span className="tabular-nums w-28 text-right">{formatCurrency(otherTotal)}</span>
+                  </div>
+                )}
+                <div className="flex gap-8 font-bold text-lg pt-1.5 border-t w-64 justify-between">
+                  <span>TOTAL</span>
+                  <span className="tabular-nums text-right">
+                    {formatCurrency(mode === "labor_only" ? laborTotal : total)}
+                  </span>
+                </div>
               </div>
             </div>
           </CardContent>
