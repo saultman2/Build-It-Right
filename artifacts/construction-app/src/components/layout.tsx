@@ -13,6 +13,7 @@ import {
   UsersRound,
   LogOut,
   Home,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGetCompany } from "@workspace/api-client-react";
@@ -24,6 +25,7 @@ const nav = [
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/quotes", label: "Quick Quote", icon: Zap },
   { href: "/jobs", label: "Projects", icon: HardHat },
+  { href: "/navigate", label: "Navigate", icon: MapPin },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/crew", label: "Crew", icon: UsersRound },
   { href: "/finances", label: "Finances", icon: Wallet },
