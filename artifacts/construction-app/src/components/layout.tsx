@@ -22,7 +22,7 @@ const logoSrc = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/logo.svg`;
 
 const nav = [
   { href: "/clients", label: "Clients", icon: Users },
-  { href: "/quotes", label: "Quick Quote", icon: Zap },
+  { href: "/quotes/quick", label: "Quick Quote", icon: Zap },
   { href: "/jobs", label: "Projects", icon: HardHat },
   { href: "/navigate", label: "Navigate", icon: MapPin },
   { href: "/calendar", label: "Calendar", icon: Calendar },
@@ -34,7 +34,7 @@ const nav = [
 const bottomNav = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/clients", label: "Clients", icon: Users },
-  { href: "/quotes", label: "Quote", icon: Zap },
+  { href: "/quotes/quick", label: "Quote", icon: Zap },
   { href: "/jobs", label: "Projects", icon: HardHat },
   { href: "/finances", label: "Finances", icon: Wallet },
 ];

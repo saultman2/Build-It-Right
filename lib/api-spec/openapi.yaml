@@ -1193,6 +1193,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/AiMaterialPriceResult"
 
+  /ai/quick-quote:
+    post:
+      operationId: aiQuickQuote
+      tags: [ai]
+      summary: Generate structured materials and labor line items from a one-line job description
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiQuickQuoteInput"
+      responses:
+        "200":
+          description: Structured materials and labor suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiQuickQuoteResult"
+
   # ──────────────────────────────────────
   # STORAGE
   # ──────────────────────────────────────
@@ -2784,5 +2803,58 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AiMaterialPriceRetailEstimate"
+        disclaimer:
+          type: [string, "null"]
+
+    AiQuickQuoteInput:
+      type: object
+      required: [jobDescription]
+      properties:
+        jobDescription:
+          type: string
+          description: A one-line description of the job (e.g. "Install 200 ft of seamless gutters with 4 downspouts").
+        jobType:
+          type: [string, "null"]
+          description: Optional job type/category to refine the estimate.
+        zipCode:
+          type: [string, "null"]
+          description: Optional zip code for regional pricing.
+
+    AiQuickQuoteMaterial:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        qty:
+          type: [number, "null"]
+        unit:
+          type: [string, "null"]
+        unitPrice:
+          type: [number, "null"]
+
+    AiQuickQuoteLabor:
+      type: object
+      required: [description]
+      properties:
+        description:
+          type: string
+        qty:
+          type: [number, "null"]
+        unitPrice:
+          type: [number, "null"]
+
+    AiQuickQuoteResult:
+      type: object
+      required: [materials, labor]
+      properties:
+        materials:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiQuickQuoteMaterial"
+        labor:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiQuickQuoteLabor"
         disclaimer:
           type: [string, "null"]

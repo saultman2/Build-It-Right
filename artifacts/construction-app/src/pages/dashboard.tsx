@@ -22,7 +22,7 @@ import {
 
 const CATEGORIES = [
   { href: "/clients", label: "Clients", desc: "Your book of business", icon: Users, tint: "bg-sky-500/10 text-sky-600" },
-  { href: "/quotes", label: "Quick Quote", desc: "AI estimate in minutes", icon: Zap, tint: "bg-amber-500/10 text-amber-600" },
+  { href: "/quotes/quick", label: "Quick Quote", desc: "AI estimate in minutes", icon: Zap, tint: "bg-amber-500/10 text-amber-600" },
   { href: "/jobs", label: "Projects", desc: "Jobs across every stage", icon: HardHat, tint: "bg-orange-500/10 text-orange-600" },
   { href: "/calendar", label: "Calendar", desc: "Schedule & site visits", icon: Calendar, tint: "bg-violet-500/10 text-violet-600" },
   { href: "/crew", label: "Crew", desc: "Team & assignments", icon: UsersRound, tint: "bg-teal-500/10 text-teal-600" },

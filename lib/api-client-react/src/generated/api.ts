@@ -26,6 +26,8 @@ import type {
   AiInvoiceDesignResult,
   AiMaterialPriceInput,
   AiMaterialPriceResult,
+  AiQuickQuoteInput,
+  AiQuickQuoteResult,
   AiQuoteEstimateInput,
   AiQuoteEstimateResult,
   AiRenderPhotoInput,
@@ -4376,6 +4378,77 @@ export const useAiMaterialPrice = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAiMaterialPriceMutationOptions(options));
+    }
+
+export const getAiQuickQuoteUrl = () => {
+
+
+
+
+  return `/api/ai/quick-quote`
+}
+
+/**
+ * @summary Generate structured materials and labor line items from a one-line job description
+ */
+export const aiQuickQuote = async (aiQuickQuoteInput: AiQuickQuoteInput, options?: RequestInit): Promise<AiQuickQuoteResult> => {
+
+  return customFetch<AiQuickQuoteResult>(getAiQuickQuoteUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      aiQuickQuoteInput,)
+  }
+);}
+
+
+
+
+export const getAiQuickQuoteMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiQuickQuote>>, TError,{data: BodyType<AiQuickQuoteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof aiQuickQuote>>, TError,{data: BodyType<AiQuickQuoteInput>}, TContext> => {
+
+const mutationKey = ['aiQuickQuote'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof aiQuickQuote>>, {data: BodyType<AiQuickQuoteInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  aiQuickQuote(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AiQuickQuoteMutationResult = NonNullable<Awaited<ReturnType<typeof aiQuickQuote>>>
+    export type AiQuickQuoteMutationBody = BodyType<AiQuickQuoteInput>
+    export type AiQuickQuoteMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Generate structured materials and labor line items from a one-line job description
+ */
+export const useAiQuickQuote = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiQuickQuote>>, TError,{data: BodyType<AiQuickQuoteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof aiQuickQuote>>,
+        TError,
+        {data: BodyType<AiQuickQuoteInput>},
+        TContext
+      > => {
+      return useMutation(getAiQuickQuoteMutationOptions(options));
     }
 
 export const getRequestUploadUrlUrl = () => {

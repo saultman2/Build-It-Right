@@ -1597,6 +1597,31 @@ export const AiMaterialPriceResponse = zod.object({
 
 
 /**
+ * @summary Generate structured materials and labor line items from a one-line job description
+ */
+export const AiQuickQuoteBody = zod.object({
+  "jobDescription": zod.string().describe('A one-line description of the job (e.g. \"Install 200 ft of seamless gutters with 4 downspouts\").'),
+  "jobType": zod.string().nullish().describe('Optional job type\/category to refine the estimate.'),
+  "zipCode": zod.string().nullish().describe('Optional zip code for regional pricing.')
+})
+
+export const AiQuickQuoteResponse = zod.object({
+  "materials": zod.array(zod.object({
+  "name": zod.string(),
+  "qty": zod.number().nullish(),
+  "unit": zod.string().nullish(),
+  "unitPrice": zod.number().nullish()
+})),
+  "labor": zod.array(zod.object({
+  "description": zod.string(),
+  "qty": zod.number().nullish(),
+  "unitPrice": zod.number().nullish()
+})),
+  "disclaimer": zod.string().nullish()
+})
+
+
+/**
  * @summary Request a presigned URL for file upload
  */
 export const RequestUploadUrlBody = zod.object({

@@ -1110,6 +1110,46 @@ export interface AiMaterialPriceResult {
   disclaimer?: string | null;
 }
 
+export interface AiQuickQuoteInput {
+  /** A one-line description of the job (e.g. "Install 200 ft of seamless gutters with 4 downspouts"). */
+  jobDescription: string;
+  /**
+     * Optional job type/category to refine the estimate.
+     * @nullable
+     */
+  jobType?: string | null;
+  /**
+     * Optional zip code for regional pricing.
+     * @nullable
+     */
+  zipCode?: string | null;
+}
+
+export interface AiQuickQuoteMaterial {
+  name: string;
+  /** @nullable */
+  qty?: number | null;
+  /** @nullable */
+  unit?: string | null;
+  /** @nullable */
+  unitPrice?: number | null;
+}
+
+export interface AiQuickQuoteLabor {
+  description: string;
+  /** @nullable */
+  qty?: number | null;
+  /** @nullable */
+  unitPrice?: number | null;
+}
+
+export interface AiQuickQuoteResult {
+  materials: AiQuickQuoteMaterial[];
+  labor: AiQuickQuoteLabor[];
+  /** @nullable */
+  disclaimer?: string | null;
+}
+
 export type ListClientsParams = {
 search?: string;
 };

@@ -666,4 +666,97 @@ Set confidence to "high" when you found a clear current listed price, "estimate"
   res.json({ historical, retailEstimates, disclaimer });
 });
 
+const QuickQuoteBody = z.object({
+  jobDescription: z.string().min(1),
+  jobType: z.string().nullish(),
+  zipCode: z.string().nullish(),
+});
+
+router.post("/ai/quick-quote", async (req, res): Promise<void> => {
+  const parsed = QuickQuoteBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { jobDescription, jobType } = parsed.data;
+
+  let zipCode = parsed.data.zipCode ?? undefined;
+  if (!zipCode) {
+    const [company] = await db
+      .select({ zipCode: companiesTable.zipCode })
+      .from(companiesTable)
+      .where(eq(companiesTable.id, req.companyId!));
+    zipCode = company?.zipCode ?? undefined;
+  }
+
+  const openai = getOpenai();
+  if (!openai) {
+    res.status(503).json({ error: "AI service is not configured in this environment." });
+    return;
+  }
+
+  const locationContext = zipCode ? `Location: zip code ${zipCode}.` : "";
+  const typeContext = jobType ? `Job type: ${jobType}.` : "";
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-5.4",
+    max_completion_tokens: 3072,
+    messages: [
+      {
+        role: "system",
+        content: `You are a construction cost estimator. From a short job description, generate a structured list of the materials and labor needed to complete the job, with realistic US regional pricing.
+Respond ONLY with valid JSON of this exact shape:
+{ "materials": [ { "name": string, "qty": number, "unit": string, "unitPrice": number } ], "labor": [ { "description": string, "qty": number, "unitPrice": number } ] }
+For materials: qty is the quantity, unit is the unit of measure (e.g. ea, ft, sheet, box), unitPrice is the approximate retail price per unit.
+For labor: qty is the number of hours, unitPrice is the hourly rate. Each labor line should describe a distinct task.
+Base prices on regional averages${zipCode ? ` for the given zip code` : ""}. Be realistic, not padded.`,
+      },
+      {
+        role: "user",
+        content: `${typeContext} ${locationContext}\n\nJob description: ${jobDescription}\n\nList the materials and labor needed with quantities and prices.`,
+      },
+    ],
+    response_format: { type: "json_object" },
+  });
+
+  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const quickQuoteSchema = z.object({
+    materials: z
+      .array(
+        z.object({
+          name: z.string(),
+          qty: z.number().nullish(),
+          unit: z.string().nullish(),
+          unitPrice: z.number().nullish(),
+        }),
+      )
+      .default([]),
+    labor: z
+      .array(
+        z.object({
+          description: z.string(),
+          qty: z.number().nullish(),
+          unitPrice: z.number().nullish(),
+        }),
+      )
+      .default([]),
+  });
+
+  let result: z.infer<typeof quickQuoteSchema>;
+  try {
+    result = quickQuoteSchema.parse(JSON.parse(extractJson(raw)));
+  } catch {
+    res.status(500).json({ error: "AI returned invalid response format" });
+    return;
+  }
+
+  res.json({
+    materials: result.materials,
+    labor: result.labor,
+    disclaimer:
+      "These are AI-generated estimates based on regional averages — review and adjust before sending.",
+  });
+});
+
 export default router;

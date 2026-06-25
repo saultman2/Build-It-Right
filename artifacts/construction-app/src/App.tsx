@@ -22,6 +22,7 @@ import InvoiceDetail from "@/pages/invoices/detail";
 import NewInvoicePage from "@/pages/invoices/new";
 import EditInvoicePage from "@/pages/invoices/edit";
 import QuotesPage from "@/pages/quotes/index";
+import QuickQuotePage from "@/pages/quotes/quick";
 import FinancesPage from "@/pages/finances";
 import NavigatePage from "@/pages/navigate";
 import CrewPage from "@/pages/crew";
@@ -148,6 +149,7 @@ function ProtectedRoutes() {
         <Route path="/clients/:id" component={ClientDetail} />
         <Route path="/calendar" component={CalendarPage} />
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/quotes/quick" component={QuickQuotePage} />
         <Route path="/quotes" component={QuotesPage} />
         <Route path="/finances" component={FinancesPage} />
         <Route path="/navigate" component={NavigatePage} />
