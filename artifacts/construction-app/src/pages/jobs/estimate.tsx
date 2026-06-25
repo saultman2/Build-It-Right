@@ -290,7 +290,7 @@ export default function JobEstimate() {
                         variant="ghost"
                         size="icon"
                         onClick={() => removeItem(item.localId)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-11 w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>

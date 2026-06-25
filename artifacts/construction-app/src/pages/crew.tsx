@@ -255,7 +255,7 @@ function CrewList({ type }: { type: CrewType }) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 text-destructive hover:text-destructive"
+                    className="h-11 w-11 text-destructive hover:text-destructive"
                     onClick={() => setDeleteTarget(m)}
                     aria-label="Delete"
                   >
@@ -275,7 +275,7 @@ function CrewList({ type }: { type: CrewType }) {
                 {m.email && (
                   <a
                     href={`mailto:${m.email}`}
-                    className="flex items-center gap-2 text-muted-foreground hover:text-primary min-h-8 truncate"
+                    className="flex items-center gap-2 text-muted-foreground hover:text-primary min-h-11 truncate"
                   >
                     <Mail className="h-3.5 w-3.5 shrink-0" /> {m.email}
                   </a>

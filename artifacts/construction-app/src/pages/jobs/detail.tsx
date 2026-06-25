@@ -134,6 +134,7 @@ function JobEstimatesCard({ jobId }: { jobId: number }) {
             </Link>
           </div>
         ) : (
+          <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-muted-foreground text-xs uppercase">
@@ -200,6 +201,7 @@ function JobEstimatesCard({ jobId }: { jobId: number }) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -508,7 +510,7 @@ function MaterialsTab({ jobId, jobTitle, jobDescription, approvedEstimateId }: {
               </div>
             </div>
           ) : (
-            <div>
+            <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-sm">
                 <thead className="border-t">
                   <tr className="text-left text-muted-foreground">
@@ -613,7 +615,7 @@ function MaterialsTab({ jobId, jobTitle, jobDescription, approvedEstimateId }: {
             </div>
             {aiDisclaimer && <p className="text-xs text-muted-foreground mt-1">{aiDisclaimer}</p>}
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="p-0 overflow-x-auto no-scrollbar">
             <table className="w-full text-sm">
               <thead className="border-t">
                 <tr className="text-left text-muted-foreground">
@@ -1101,6 +1103,7 @@ function ReceiptsTab({ jobId }: { jobId: number }) {
             <p className="text-muted-foreground text-sm">Add receipts to track job expenses.</p>
           </div>
         ) : list.length > 0 ? (
+          <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-muted-foreground text-xs uppercase">
@@ -1134,6 +1137,7 @@ function ReceiptsTab({ jobId }: { jobId: number }) {
               ))}
             </tbody>
           </table>
+          </div>
         ) : null}
       </CardContent>
     </Card>

@@ -736,7 +736,7 @@ export default function QuotesPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-9 w-9 text-destructive hover:text-destructive"
+                              className="h-11 w-11 text-destructive hover:text-destructive"
                               title="Delete estimate"
                               disabled={deletingId === est.id}
                               onClick={() => handleDelete(est.id, est.title)}
